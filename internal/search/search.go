@@ -63,7 +63,12 @@ func (s *service) startQuery(ctx context.Context, query string) (*Results, error
 }
 
 func (s *service) executeAchSelect(ctx context.Context, sel *sqlparser.Select) (*Results, error) {
-	var out Results
+	// TODO(adam): steps needed still
+	//
+	// - get selected columns (from query), match those against an *ach.File (batches, entries, etc)
+	// - setup filter (WHERE clause)
+	// - apply the filter and return results
+	// - finish evaluateWhere (from example)
 
-	return &out, nil
+	return nil, nil
 }
