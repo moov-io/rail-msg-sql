@@ -4,13 +4,15 @@ go 1.24.4
 
 require (
 	github.com/moov-io/ach v1.50.0
+	github.com/moov-io/base v0.55.1
 	vitess.io/vitess v0.22.1
 )
 
 require (
+	github.com/go-kit/log v0.2.1 // indirect
+	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/golang/glog v1.2.4 // indirect
 	github.com/igrmk/treemap/v2 v2.0.1 // indirect
-	github.com/moov-io/base v0.55.1 // indirect
 	github.com/moov-io/iso3166 v0.2.1 // indirect
 	github.com/moov-io/iso4217 v0.3.2 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 // indirect

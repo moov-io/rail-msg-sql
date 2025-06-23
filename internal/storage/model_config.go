@@ -9,6 +9,7 @@ type Config struct {
 }
 
 type FilesystemConfig struct {
-	Directories  []string
-	ValidateOpts *ach.ValidateOpts
+	Directories []string
+
+	AchValidateOpts *ach.ValidateOpts
 }

@@ -16,7 +16,7 @@ type filesystemRepository struct {
 
 var _ Repository = (&filesystemRepository{})
 
-func (r *filesystemRepository) ListFiles(ctx context.Context, params FilterParams) ([]*ach.File, error) {
+func (r *filesystemRepository) ListAchFiles(ctx context.Context, params FilterParams) ([]*ach.File, error) {
 	var out []*ach.File
 
 	for _, dir := range r.config.Directories {
@@ -51,7 +51,7 @@ func (r *filesystemRepository) readFiles(ctx context.Context, dir string) ([]*ac
 			defer fd.Close()
 
 			rdr := ach.NewReader(fd)
-			rdr.SetValidation(r.config.ValidateOpts)
+			rdr.SetValidation(r.config.AchValidateOpts)
 
 			file, err := rdr.Read()
 			if err != nil {
@@ -60,7 +60,7 @@ func (r *filesystemRepository) readFiles(ctx context.Context, dir string) ([]*ac
 			out = append(out, &file)
 
 		case ".json":
-			file, err := ach.ReadJSONFileWith(path, r.config.ValidateOpts)
+			file, err := ach.ReadJSONFileWith(path, r.config.AchValidateOpts)
 			if err != nil {
 				return fmt.Errorf("reading %s (as JSON) failed: %w", path, err)
 			}

@@ -7,5 +7,5 @@ import (
 )
 
 type Repository interface {
-	ListFiles(ctx context.Context, params FilterParams) ([]*ach.File, error)
+	ListAchFiles(ctx context.Context, params FilterParams) ([]*ach.File, error)
 }
