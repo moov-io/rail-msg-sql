@@ -1,4 +1,4 @@
-module github.com/moov-io/ach-file-sql
+module github.com/moov-io/rail-msg-sql
 
 go 1.24.4
 

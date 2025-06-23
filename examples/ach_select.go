@@ -265,7 +265,7 @@ func getSelectedColumns(exprs *sqlparser.SelectExprs) []string {
 }
 
 func main() {
-	where, err := filepath.Abs("testdata") // Directory containing ACH files
+	where, err := filepath.Abs(filepath.Join("testdata", "ach")) // Directory containing ACH files
 	if err != nil {
 		log.Fatalf("problem locating files in %v", where)
 	}
