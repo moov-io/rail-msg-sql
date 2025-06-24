@@ -47,28 +47,20 @@ func (s *service) startQuery(ctx context.Context, query string) (*Results, error
 	if !ok {
 		return nil, fmt.Errorf("only SELECT queries are supported")
 	}
-
 	if len(sel.From) != 1 {
 		return nil, fmt.Errorf("exactly one table expected")
 	}
 
-	tableName := sqlparser.String(sel.From[0].(*sqlparser.AliasedTableExpr).Expr)
+	tableExpr, ok := sel.From[0].(*sqlparser.AliasedTableExpr)
+	if !ok {
+		return nil, fmt.Errorf("unexpected %T - wanted AliasedTableExpr", sel.From[0])
+	}
+	tableName := sqlparser.String(tableExpr.Expr)
 
 	switch strings.ToLower(tableName) {
 	case "ach_files":
-		return s.executeAchSelect(ctx, sel)
+		return s.executeAchFileSelect(ctx, sel)
 	}
 
 	return nil, fmt.Errorf("unknown table: %s", tableName)
-}
-
-func (s *service) executeAchSelect(ctx context.Context, sel *sqlparser.Select) (*Results, error) {
-	// TODO(adam): steps needed still
-	//
-	// - get selected columns (from query), match those against an *ach.File (batches, entries, etc)
-	// - setup filter (WHERE clause)
-	// - apply the filter and return results
-	// - finish evaluateWhere (from example)
-
-	return nil, nil
 }
