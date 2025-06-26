@@ -6,5 +6,5 @@ type Results struct {
 }
 
 type Row struct {
-	Columns []string
+	Columns []interface{}
 }

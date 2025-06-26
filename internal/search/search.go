@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moov-io/base/log"
 	"github.com/moov-io/rail-msg-sql/internal/storage"
 
+	"github.com/moov-io/base/log"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type Service interface {
-	Search(ctx context.Context, query string) (*Results, error)
+	Search(ctx context.Context, query string, params storage.FilterParams) (*Results, error)
 }
 
 func NewService(logger log.Logger, fileStorage storage.Repository) (Service, error) {
@@ -27,11 +27,11 @@ type service struct {
 	fileStorage storage.Repository
 }
 
-func (s *service) Search(ctx context.Context, query string) (*Results, error) {
-	return s.startQuery(ctx, query)
+func (s *service) Search(ctx context.Context, query string, params storage.FilterParams) (*Results, error) {
+	return s.startQuery(ctx, query, params)
 }
 
-func (s *service) startQuery(ctx context.Context, query string) (*Results, error) {
+func (s *service) startQuery(ctx context.Context, query string, params storage.FilterParams) (*Results, error) {
 	var opts sqlparser.Options
 	p, err := sqlparser.New(opts)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *service) startQuery(ctx context.Context, query string) (*Results, error
 
 	switch strings.ToLower(tableName) {
 	case "ach_files":
-		return s.executeAchFileSelect(ctx, sel)
+		return s.executeAchFileSelect(ctx, sel, params)
 	}
 
 	return nil, fmt.Errorf("unknown table: %s", tableName)

@@ -4,23 +4,495 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/moov-io/rail-msg-sql/internal/storage"
 
 	"github.com/moov-io/ach"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
-func (s *service) executeAchFileSelect(ctx context.Context, sel *sqlparser.Select) (*Results, error) {
+func (s *service) executeAchFileSelect(ctx context.Context, sel *sqlparser.Select, params storage.FilterParams) (*Results, error) {
+	// Step 1: Extract selected columns and detect aggregate functions
+	type columnInfo struct {
+		SnakeName string // snake_case column name
+		CamelName string // CamelCase field name
+		Aggregate string // "MIN", "MAX", "SUM", or "" for non-aggregate
+	}
+	var columns []columnInfo
+	var headerColumns []string
+	isAggregateQuery := false
 
-	// TODO(adam): steps needed still
-	//
-	// - get selected columns (from query), match those against an *ach.File (batches, entries, etc)
-	// - setup filter (WHERE clause)
-	// - apply the filter and return results
-	// - finish evaluateWhere (from example)
+	for _, expr := range sel.SelectExprs.Exprs {
+		if aliased, ok := expr.(*sqlparser.AliasedExpr); ok {
+			var snakeName, camelName, aggregate string
+			switch e := aliased.Expr.(type) {
+			case *sqlparser.ColName:
+				snakeName = strings.ToLower(sqlparser.String(e.Name))
+				camelName = toCamelCase(snakeName)
 
-	return nil, nil
+			case *sqlparser.FuncExpr:
+				// Handle aggregate functions (MIN, MAX, SUM)
+				aggregate = strings.ToUpper(sqlparser.String(e.Name))
+				if aggregate != "MIN" && aggregate != "MAX" && aggregate != "SUM" {
+					return nil, fmt.Errorf("unsupported aggregate function: %s", aggregate)
+				}
+				isAggregateQuery = true
+				if len(e.Exprs) != 1 {
+					return nil, fmt.Errorf("aggregate function %s expects one argument", aggregate)
+				}
+				// Check if the argument is an AliasedExpr or directly a ColName
+				var colName *sqlparser.ColName
+				if cn, ok := e.Exprs[0].(*sqlparser.ColName); ok {
+					colName = cn
+				}
+				if colName == nil {
+					return nil, fmt.Errorf("invalid argument for %s: expected column name", aggregate)
+				}
+				snakeName = strings.ToLower(sqlparser.String(colName.Name))
+				camelName = toCamelCase(snakeName)
+
+			case *sqlparser.Sum:
+				aggregate = "SUM"
+				isAggregateQuery = true
+				// Check if the argument is an AliasedExpr or directly a ColName
+				var colName *sqlparser.ColName
+				if cn, ok := e.Arg.(*sqlparser.ColName); ok {
+					colName = cn
+				}
+				if colName == nil {
+					return nil, fmt.Errorf("invalid argument for %T: expected column name", e)
+				}
+				snakeName = strings.ToLower(sqlparser.String(colName.Name))
+				camelName = toCamelCase(snakeName)
+
+			case *sqlparser.Min:
+				aggregate = "MIN"
+				isAggregateQuery = true
+				// Check if the argument is an AliasedExpr or directly a ColName
+				var colName *sqlparser.ColName
+				if cn, ok := e.Arg.(*sqlparser.ColName); ok {
+					colName = cn
+				}
+				if colName == nil {
+					return nil, fmt.Errorf("invalid argument for %T: expected column name", e)
+				}
+				snakeName = strings.ToLower(sqlparser.String(colName.Name))
+				camelName = toCamelCase(snakeName)
+
+			case *sqlparser.Max:
+				aggregate = "MAX"
+				isAggregateQuery = true
+				// Check if the argument is an AliasedExpr or directly a ColName
+				var colName *sqlparser.ColName
+				if cn, ok := e.Arg.(*sqlparser.ColName); ok {
+					colName = cn
+				}
+				if colName == nil {
+					return nil, fmt.Errorf("invalid argument for %T: expected column name", e)
+				}
+				snakeName = strings.ToLower(sqlparser.String(colName.Name))
+				camelName = toCamelCase(snakeName)
+
+			default:
+				return nil, fmt.Errorf("unsupported expression type: %T", aliased.Expr)
+			}
+			columns = append(columns, columnInfo{
+				SnakeName: snakeName,
+				CamelName: camelName,
+				Aggregate: aggregate,
+			})
+			// Use aliased name if provided, otherwise snake_case column name
+			headerName := snakeName
+			if !aliased.As.IsEmpty() {
+				headerName = strings.ToLower(sqlparser.String(aliased.As))
+			} else if aggregate != "" {
+				headerName = fmt.Sprintf("%s(%s)", aggregate, snakeName)
+			}
+			headerColumns = append(headerColumns, headerName)
+		}
+	}
+
+	// Step 2: Get all possible ACH file fields using reflection
+	achFileFields := make(map[string]string) // snake_case -> CamelCase
+	extractFieldNames(reflect.TypeOf(ach.File{}), achFileFields)
+
+	// Validate selected fields
+	for _, col := range columns {
+		if _, exists := achFileFields[col.SnakeName]; !exists {
+			return nil, fmt.Errorf("invalid column: %s", col.SnakeName)
+		}
+	}
+
+	// Step 3: Fetch ACH files from storage
+	files, err := s.fileStorage.ListAchFiles(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("fetching ACH files: %w", err)
+	}
+
+	// Step 4: Setup and apply WHERE clause filter
+	var filteredEntries []struct {
+		File  *ach.File
+		Entry ach.EntryDetail
+	}
+	if sel.Where != nil {
+		for _, file := range files {
+			fileValue := reflect.ValueOf(file).Elem()
+			// Iterate over Batches and their Entries
+			batches := fileValue.FieldByName("Batches")
+			if !batches.IsValid() || batches.IsNil() {
+				continue
+			}
+			for i := 0; i < batches.Len(); i++ {
+				batch := batches.Index(i)
+				if batch.Kind() == reflect.Interface {
+					batch = batch.Elem()
+				}
+				if batch.Kind() == reflect.Ptr {
+					batch = batch.Elem()
+				}
+				entries := batch.FieldByName("Entries")
+				if !entries.IsValid() || entries.IsNil() {
+					continue
+				}
+				for j := 0; j < entries.Len(); j++ {
+					entry := entries.Index(j)
+					if entry.Kind() == reflect.Ptr {
+						entry = entry.Elem()
+					}
+					if !entry.IsValid() {
+						continue
+					}
+					// Evaluate WHERE clause against the EntryDetail
+					matches, err := s.evaluateWhere(ctx, file, sel.Where.Expr)
+					if err != nil {
+						s.logger.Error().LogErrorf("evaluating WHERE clause: %v", err)
+						continue
+					}
+					if matches {
+						filteredEntries = append(filteredEntries, struct {
+							File  *ach.File
+							Entry ach.EntryDetail
+						}{
+							File:  file,
+							Entry: entry.Interface().(ach.EntryDetail),
+						})
+					}
+				}
+			}
+		}
+	} else {
+		// No WHERE clause, collect all entries
+		for _, file := range files {
+			fileValue := reflect.ValueOf(file).Elem()
+			batches := fileValue.FieldByName("Batches")
+			if !batches.IsValid() || batches.IsNil() {
+				continue
+			}
+			for i := 0; i < batches.Len(); i++ {
+				batch := batches.Index(i)
+				if batch.Kind() == reflect.Interface {
+					batch = batch.Elem()
+				}
+				if batch.Kind() == reflect.Ptr {
+					batch = batch.Elem()
+				}
+				entries := batch.FieldByName("Entries")
+				if !entries.IsValid() || entries.IsNil() {
+					continue
+				}
+				for j := 0; j < entries.Len(); j++ {
+					entry := entries.Index(j)
+					if entry.Kind() == reflect.Ptr {
+						entry = entry.Elem()
+					}
+					if !entry.IsValid() {
+						continue
+					}
+					filteredEntries = append(filteredEntries, struct {
+						File  *ach.File
+						Entry ach.EntryDetail
+					}{
+						File:  file,
+						Entry: entry.Interface().(ach.EntryDetail),
+					})
+				}
+			}
+		}
+	}
+
+	// Step 5: Build results with headers and rows
+	results := &Results{
+		Headers: Row{Columns: make([]interface{}, len(headerColumns))},
+		Rows:    make([]Row, 0),
+	}
+	for i, name := range headerColumns {
+		results.Headers.Columns[i] = name
+	}
+
+	if isAggregateQuery {
+		// Handle aggregate query (single row with MIN, MAX, SUM results)
+		aggResults := make([]interface{}, len(columns))
+		for i, col := range columns {
+			if col.Aggregate == "" {
+				return nil, fmt.Errorf("non-aggregate column %s in aggregate query", col.SnakeName)
+			}
+			var min, max, sum float64
+			var initialized bool
+			var isInt bool
+
+			for _, entry := range filteredEntries {
+				entryValue := reflect.ValueOf(entry.Entry).Elem()
+				fieldValue, err := getFieldByName(entryValue, col.SnakeName)
+				if err != nil || !fieldValue.IsValid() {
+					continue
+				}
+
+				var val float64
+				switch fieldValue.Kind() {
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					val = float64(fieldValue.Int()) / 100.0 // Convert cents to dollars
+					isInt = true
+				case reflect.Float32, reflect.Float64:
+					val = fieldValue.Float()
+				default:
+					return nil, fmt.Errorf("aggregate %s not supported for non-numeric field %s", col.Aggregate, col.SnakeName)
+				}
+
+				if !initialized {
+					min, max, sum = val, val, val
+					initialized = true
+				} else {
+					if val < min {
+						min = val
+					}
+					if val > max {
+						max = val
+					}
+					sum += val
+				}
+			}
+
+			if !initialized {
+				aggResults[i] = nil // No valid data found
+			} else {
+				switch col.Aggregate {
+				case "MIN":
+					if isInt {
+						aggResults[i] = min // Keep as float64 for dollars
+					} else {
+						aggResults[i] = min
+					}
+				case "MAX":
+					if isInt {
+						aggResults[i] = max // Keep as float64 for dollars
+					} else {
+						aggResults[i] = max
+					}
+				case "SUM":
+					if isInt {
+						aggResults[i] = sum // Keep as float64 for dollars
+					} else {
+						aggResults[i] = sum
+					}
+				}
+			}
+		}
+		results.Rows = append(results.Rows, Row{Columns: aggResults})
+	} else {
+		// Handle non-aggregate query (one row per entry)
+		for _, entry := range filteredEntries {
+			entryValue := reflect.ValueOf(&entry.Entry).Elem()
+			row := Row{Columns: make([]interface{}, len(columns))}
+
+			for i, col := range columns {
+				fieldValue, err := getFieldByName(entryValue, col.SnakeName)
+				if err != nil || !fieldValue.IsValid() {
+					s.logger.Warn().LogErrorf("getting field %s: %v", col.SnakeName, err)
+					row.Columns[i] = nil
+					continue
+				}
+
+				// Store raw value based on type
+				switch fieldValue.Kind() {
+				case reflect.String:
+					row.Columns[i] = fieldValue.String()
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					row.Columns[i] = float64(fieldValue.Int()) / 100.0 // Convert cents to dollars
+				case reflect.Float32, reflect.Float64:
+					row.Columns[i] = fieldValue.Float()
+				case reflect.Bool:
+					row.Columns[i] = fieldValue.Bool()
+				case reflect.Slice:
+					row.Columns[i] = fieldValue.Interface()
+				case reflect.Struct:
+					row.Columns[i] = fieldValue.Interface()
+				default:
+					s.logger.Warn().Logf("unsupported field type %s for %s", fieldValue.Kind(), col.SnakeName)
+					row.Columns[i] = nil
+				}
+			}
+
+			results.Rows = append(results.Rows, row)
+		}
+	}
+
+	return results, nil
+}
+
+// evaluateWhere evaluates the WHERE clause expression against an ACH file
+func (s *service) evaluateWhere(ctx context.Context, file *ach.File, expr sqlparser.Expr) (bool, error) {
+	switch e := expr.(type) {
+	case *sqlparser.ComparisonExpr:
+		return s.evaluateComparison(ctx, file, e)
+	case *sqlparser.AndExpr:
+		left, err := s.evaluateWhere(ctx, file, e.Left)
+		if err != nil || !left {
+			return false, err
+		}
+		right, err := s.evaluateWhere(ctx, file, e.Right)
+		return left && right, err
+	case *sqlparser.OrExpr:
+		left, err := s.evaluateWhere(ctx, file, e.Left)
+		if err != nil {
+			return false, err
+		}
+		if left {
+			return true, nil
+		}
+		return s.evaluateWhere(ctx, file, e.Right)
+	default:
+		return false, fmt.Errorf("unsupported WHERE expression: %T", expr)
+	}
+}
+
+// evaluateComparison evaluates a comparison expression (e.g., column = value)
+func (s *service) evaluateComparison(ctx context.Context, file *ach.File, expr *sqlparser.ComparisonExpr) (bool, error) {
+	if col, ok := expr.Left.(*sqlparser.ColName); ok {
+		snakeName := strings.ToLower(sqlparser.String(col.Name))
+		fileValue := reflect.ValueOf(file).Elem()
+		fieldValue, err := getFieldByName(fileValue, snakeName)
+		if err != nil {
+			return false, fmt.Errorf("field %s (from %#v) not found: %w", snakeName, fileValue, err)
+		}
+
+		if val, ok := expr.Right.(*sqlparser.Literal); ok {
+			switch expr.Operator {
+			case sqlparser.EqualOp, sqlparser.LessThanOp, sqlparser.GreaterThanOp, sqlparser.LessEqualOp, sqlparser.GreaterEqualOp:
+				switch val.Type {
+				case sqlparser.IntVal:
+					// Handle integer comparisons
+					if fieldValue.Kind() == reflect.Int || fieldValue.Kind() == reflect.Int8 ||
+						fieldValue.Kind() == reflect.Int16 || fieldValue.Kind() == reflect.Int32 ||
+						fieldValue.Kind() == reflect.Int64 {
+						queryVal, err := strconv.ParseInt(string(val.Val), 10, 64)
+						if err != nil {
+							return false, fmt.Errorf("invalid integer value for %s: %w", snakeName, err)
+						}
+						fieldInt := fieldValue.Int()
+						switch expr.Operator {
+						case sqlparser.EqualOp:
+							return fieldInt == queryVal, nil
+						case sqlparser.LessThanOp:
+							return fieldInt < queryVal, nil
+						case sqlparser.GreaterThanOp:
+							return fieldInt > queryVal, nil
+						case sqlparser.LessEqualOp:
+							return fieldInt <= queryVal, nil
+						case sqlparser.GreaterEqualOp:
+							return fieldInt >= queryVal, nil
+						}
+					}
+					// Handle float fields compared to integer literals
+					if fieldValue.Kind() == reflect.Float32 || fieldValue.Kind() == reflect.Float64 {
+						queryVal, err := strconv.ParseFloat(string(val.Val), 64)
+						if err != nil {
+							return false, fmt.Errorf("invalid float value for %s: %w", snakeName, err)
+						}
+						fieldFloat := fieldValue.Float()
+						switch expr.Operator {
+						case sqlparser.EqualOp:
+							return fieldFloat == queryVal, nil
+						case sqlparser.LessThanOp:
+							return fieldFloat < queryVal, nil
+						case sqlparser.GreaterThanOp:
+							return fieldFloat > queryVal, nil
+						case sqlparser.LessEqualOp:
+							return fieldFloat <= queryVal, nil
+						case sqlparser.GreaterEqualOp:
+							return fieldFloat >= queryVal, nil
+						}
+					}
+					return false, fmt.Errorf("field %s is not a number", snakeName)
+				case sqlparser.FloatVal:
+					// Handle float comparisons
+					if fieldValue.Kind() == reflect.Float32 || fieldValue.Kind() == reflect.Float64 {
+						queryVal, err := strconv.ParseFloat(string(val.Val), 64)
+						if err != nil {
+							return false, fmt.Errorf("invalid float value for %s: %w", snakeName, err)
+						}
+						fieldFloat := fieldValue.Float()
+						switch expr.Operator {
+						case sqlparser.EqualOp:
+							return fieldFloat == queryVal, nil
+						case sqlparser.LessThanOp:
+							return fieldFloat < queryVal, nil
+						case sqlparser.GreaterThanOp:
+							return fieldFloat > queryVal, nil
+						case sqlparser.LessEqualOp:
+							return fieldFloat <= queryVal, nil
+						case sqlparser.GreaterEqualOp:
+							return fieldFloat >= queryVal, nil
+						}
+					}
+					// Handle integer fields compared to float literals
+					if fieldValue.Kind() == reflect.Int || fieldValue.Kind() == reflect.Int8 ||
+						fieldValue.Kind() == reflect.Int16 || fieldValue.Kind() == reflect.Int32 ||
+						fieldValue.Kind() == reflect.Int64 {
+						queryVal, err := strconv.ParseFloat(string(val.Val), 64)
+						if err != nil {
+							return false, fmt.Errorf("invalid float value for %s: %w", snakeName, err)
+						}
+						fieldFloat := float64(fieldValue.Int())
+						switch expr.Operator {
+						case sqlparser.EqualOp:
+							return fieldFloat == queryVal, nil
+						case sqlparser.LessThanOp:
+							return fieldFloat < queryVal, nil
+						case sqlparser.GreaterThanOp:
+							return fieldFloat > queryVal, nil
+						case sqlparser.LessEqualOp:
+							return fieldFloat <= queryVal, nil
+						case sqlparser.GreaterEqualOp:
+							return fieldFloat >= queryVal, nil
+						}
+					}
+					return false, fmt.Errorf("field %s is not a number", snakeName)
+				case sqlparser.StrVal:
+					// Handle booleans as string literals ("true" or "false")
+					if fieldValue.Kind() == reflect.Bool {
+						queryVal, err := strconv.ParseBool(string(val.Val))
+						if err != nil {
+							return false, fmt.Errorf("invalid boolean value for %s: %w", snakeName, err)
+						}
+						if expr.Operator == sqlparser.EqualOp {
+							return fieldValue.Bool() == queryVal, nil
+						}
+						return false, fmt.Errorf("operator %v not supported for boolean fields", expr.Operator)
+					}
+					return false, fmt.Errorf("field %s is not a boolean", snakeName)
+				default:
+					return false, fmt.Errorf("unsupported value type for %s: %v", snakeName, val.Type)
+				}
+			default:
+				return false, fmt.Errorf("unsupported comparison operator: %v", expr.Operator)
+			}
+		}
+		return false, fmt.Errorf("unsupported comparison value type: %T", expr.Right)
+	}
+	return false, fmt.Errorf("unsupported comparison expression: expected column name on left")
 }
 
 // toSnakeCase converts a CamelCase string to snake_case.

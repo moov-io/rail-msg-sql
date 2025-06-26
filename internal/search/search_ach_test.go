@@ -2,7 +2,6 @@ package search
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -112,8 +111,6 @@ func TestExtractFieldNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fields := make(map[string]string)
 			extractFieldNames(tt.inputType, fields)
-
-			fmt.Printf("%#v\n", fields)
 
 			for _, key := range tt.containsKeys {
 				_, exists := fields[key]
