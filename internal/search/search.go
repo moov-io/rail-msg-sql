@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
 
 	"github.com/moov-io/ach"
 	"github.com/moov-io/base/log"
@@ -471,51 +469,17 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 		return nil, fmt.Errorf("query cannot be empty")
 	}
 
-	// Validate query fields
-	validFields := make(map[string]string)
-	extractFieldNames(reflect.TypeOf(ach.FileHeader{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.FileControl{}), validFields)
-	for _, batchType := range concreteAchBatchTypes {
-		extractFieldNames(batchType, validFields)
-	}
-	extractFieldNames(reflect.TypeOf(ach.EntryDetail{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda02{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda05{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda98{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda98Refused{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda99{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda99Contested{}), validFields)
-	extractFieldNames(reflect.TypeOf(ach.Addenda99Dishonored{}), validFields)
-
-	// Basic validation: check if query references valid fields
-	queryLower := strings.ToLower(query)
-	for _, field := range validFields {
-		if strings.Contains(queryLower, "ach_files."+field) ||
-			strings.Contains(queryLower, "ach_batches."+field) ||
-			strings.Contains(queryLower, "ach_entries."+field) ||
-			strings.Contains(queryLower, "ach_addendas."+field) {
-			continue
-		}
-	}
-	// Allow filename explicitly
-	if strings.Contains(queryLower, "ach_files.filename") {
-		validFields["filename"] = "filename"
-	}
-
-	// Execute query
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	defer rows.Close()
 
-	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns: %w", err)
 	}
 
-	// Build results
 	results := &Results{
 		Headers: Row{Columns: make([]interface{}, len(columns))},
 	}
@@ -524,9 +488,9 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 	}
 
 	for rows.Next() {
-		// Create slice to hold row values
 		values := make([]interface{}, len(columns))
 		valuePtrs := make([]interface{}, len(columns))
+
 		for i := range values {
 			valuePtrs[i] = &values[i]
 		}
