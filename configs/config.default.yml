@@ -1,0 +1,8 @@
+RailMsgSQL:
+  Servers:
+    Public:
+      Bind:
+        Address: ":8686"
+    Admin:
+      Bind:
+        Address: ":9696"
