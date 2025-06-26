@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/moov-io/ach v1.51.0
-	github.com/moov-io/ach-web-viewer v0.12.7-0.20250626184912-905fb0c8d7b1
+	github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91
 	github.com/moov-io/base v0.56.0
 	github.com/ncruces/go-sqlite3 v0.26.2
 	github.com/stretchr/testify v1.10.0
