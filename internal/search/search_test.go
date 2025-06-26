@@ -53,6 +53,10 @@ func TestSearch_ACH(t *testing.T) {
 		EndDate:   time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC),
 	}
 
+	// Ingest multiple times (to skip duplicates)
+	err = svc.IngestACHFiles(ctx, params)
+	require.NoError(t, err)
+
 	err = svc.IngestACHFiles(ctx, params)
 	require.NoError(t, err)
 

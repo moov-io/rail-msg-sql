@@ -18,6 +18,8 @@ CREATE TABLE ach_files (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX ach_files_uniq_idx ON ach_files(id, filename);
+
 CREATE TABLE ach_batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_id INTEGER NOT NULL,
@@ -43,6 +45,8 @@ CREATE TABLE ach_batches (
     FOREIGN KEY (file_id) REFERENCES ach_files(id) ON DELETE CASCADE
 );
 
+CREATE UNIQUE INDEX ach_batches_uniq_idx ON ach_batches(id, file_id);
+
 CREATE TABLE ach_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     batch_id INTEGER NOT NULL,
@@ -58,6 +62,8 @@ CREATE TABLE ach_entries (
     trace_number TEXT,
     FOREIGN KEY (batch_id) REFERENCES ach_batches(id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX ach_entries_uniq_idx ON ach_entries(id, batch_id);
 
 CREATE TABLE ach_addendas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,3 +109,5 @@ CREATE TABLE ach_addendas (
     entry_detail_sequence_number TEXT,
     FOREIGN KEY (entry_id) REFERENCES ach_entries(id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX ach_addendas_uniq_idx ON ach_addendas(id, entry_id);

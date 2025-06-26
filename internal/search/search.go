@@ -88,7 +88,7 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 // insertFile inserts an ACH file's header and control into ach_files.
 func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, file *ach.File) (int64, error) {
 	query := `
-        INSERT INTO ach_files (
+        INSERT OR IGNORE INTO ach_files (
             filename,
             immediate_destination,
             immediate_origin,
@@ -134,7 +134,7 @@ func (s *service) insertBatch(ctx context.Context, tx *sql.Tx, fileID int64, bat
 	header := batch.GetHeader()
 	control := batch.GetControl()
 	query := `
-        INSERT INTO ach_batches (
+        INSERT OR IGNORE INTO ach_batches (
             file_id,
             service_class_code,
             company_name,
@@ -188,7 +188,7 @@ func (s *service) insertBatch(ctx context.Context, tx *sql.Tx, fileID int64, bat
 // insertEntry inserts an entry into ach_entries.
 func (s *service) insertEntry(ctx context.Context, tx *sql.Tx, batchID int64, entry *ach.EntryDetail) (int64, error) {
 	query := `
-        INSERT INTO ach_entries (
+        INSERT OR IGNORE INTO ach_entries (
             batch_id,
             transaction_code,
             rdfi_identification,
@@ -224,7 +224,7 @@ func (s *service) insertEntry(ctx context.Context, tx *sql.Tx, batchID int64, en
 // insertAddenda inserts an addenda record into ach_addendas.
 func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID int64, addenda interface{}) error {
 	query := `
-        INSERT INTO ach_addendas (
+        INSERT OR IGNORE INTO ach_addendas (
             entry_id,
             type_code,
             terminal_identification_code,
