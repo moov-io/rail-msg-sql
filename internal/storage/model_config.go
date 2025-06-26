@@ -2,14 +2,11 @@ package storage
 
 import (
 	"github.com/moov-io/ach"
+	achwebviewer "github.com/moov-io/ach-web-viewer/pkg/service"
 )
 
 type Config struct {
-	Filesystem *FilesystemConfig
-}
+	ACH achwebviewer.Sources
 
-type FilesystemConfig struct {
-	Directories []string
-
-	AchValidateOpts *ach.ValidateOpts
+	ACHValidateOpts *ach.ValidateOpts
 }

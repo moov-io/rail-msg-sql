@@ -1,3 +1,11 @@
 package storage
 
-type FilterParams struct{}
+import (
+	"time"
+)
+
+type FilterParams struct {
+	StartDate time.Time
+	EndDate   time.Time
+	Pattern   string
+}

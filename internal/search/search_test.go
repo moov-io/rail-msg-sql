@@ -5,26 +5,33 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/moov-io/ach"
+	achwebviewer "github.com/moov-io/ach-web-viewer/pkg/service"
 	"github.com/moov-io/base/log"
 	"github.com/moov-io/rail-msg-sql/internal/search"
 	"github.com/moov-io/rail-msg-sql/internal/storage"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestSearch_ACH(t *testing.T) {
 	logger := log.NewTestLogger()
 
-	fileStorage, err := storage.NewRepositories(storage.Config{
-		Filesystem: &storage.FilesystemConfig{
-			Directories: []string{
-				filepath.Join("..", "..", "testdata", "ach"),
+	fileStorage, err := storage.NewRepository(storage.Config{
+		ACH: achwebviewer.Sources{
+			{
+				Filesystem: &achwebviewer.FilesystemConfig{
+					Paths: []string{
+						filepath.Join("testdata", "ach"),
+					},
+				},
 			},
-			AchValidateOpts: &ach.ValidateOpts{
-				AllowMissingFileHeader:  true,
-				AllowMissingFileControl: true,
-			},
+		},
+		ACHValidateOpts: &ach.ValidateOpts{
+			AllowMissingFileHeader:  true,
+			AllowMissingFileControl: true,
 		},
 	})
 	require.NoError(t, err)
@@ -41,7 +48,10 @@ func TestSearch_ACH(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	var params storage.FilterParams
+	params := storage.FilterParams{
+		StartDate: time.Date(2018, time.September, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:   time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC),
+	}
 
 	err = svc.IngestACHFiles(ctx, params)
 	require.NoError(t, err)

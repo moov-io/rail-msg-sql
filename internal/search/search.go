@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -25,7 +26,7 @@ type Service interface {
 	Search(ctx context.Context, query string, params storage.FilterParams) (*Results, error)
 }
 
-func NewService(logger log.Logger, config Config, fileStorage storage.Repository) (Service, error) {
+func NewService(logger log.Logger, config Config, fileStorage *storage.Repository) (Service, error) {
 	db, err := openSqliteDB(config)
 	if err != nil {
 		return nil, fmt.Errorf("opening %s (as sqlite) failed: %w", config.SqliteFilepath, err)
@@ -54,7 +55,7 @@ func openSqliteDB(config Config) (*sql.DB, error) {
 
 type service struct {
 	logger      log.Logger
-	fileStorage storage.Repository
+	fileStorage *storage.Repository
 
 	db *sql.DB
 }
@@ -73,6 +74,10 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	}
 
 	for idx := range files {
+		if files[idx].File == nil {
+			continue
+		}
+
 		err := s.IngestACHFile(ctx, files[idx].Filename, files[idx].File)
 		if err != nil {
 			return fmt.Errorf("ingesting %s failed: %w", files[idx].Filename, err)
@@ -387,6 +392,10 @@ func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID int64, 
 
 // IngestACHFile ingests an ACH file into the SQLite database.
 func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.File) error {
+	if file == nil {
+		return errors.New("nil File")
+	}
+
 	// Begin transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
