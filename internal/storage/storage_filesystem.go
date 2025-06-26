@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/moov-io/ach"
+	"github.com/moov-io/rail-msg-sql/internal/achhelp"
 )
 
 type filesystemRepository struct {
@@ -16,8 +17,8 @@ type filesystemRepository struct {
 
 var _ Repository = (&filesystemRepository{})
 
-func (r *filesystemRepository) ListAchFiles(ctx context.Context, params FilterParams) ([]*ach.File, error) {
-	var out []*ach.File
+func (r *filesystemRepository) ListAchFiles(ctx context.Context, params FilterParams) ([]File, error) {
+	var out []File
 
 	for _, dir := range r.config.Directories {
 		files, err := r.readFiles(ctx, dir)
@@ -31,8 +32,8 @@ func (r *filesystemRepository) ListAchFiles(ctx context.Context, params FilterPa
 	return out, nil
 }
 
-func (r *filesystemRepository) readFiles(ctx context.Context, dir string) ([]*ach.File, error) {
-	var out []*ach.File
+func (r *filesystemRepository) readFiles(ctx context.Context, dir string) ([]File, error) {
+	var out []File
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -57,14 +58,24 @@ func (r *filesystemRepository) readFiles(ctx context.Context, dir string) ([]*ac
 			if err != nil {
 				return fmt.Errorf("reading %s (as Nacha) failed: %w", path, err)
 			}
-			out = append(out, &file)
+
+			_, filename := filepath.Split(path)
+			out = append(out, File{
+				Filename: filename,
+				File:     achhelp.PopulateIDs(&file),
+			})
 
 		case ".json":
 			file, err := ach.ReadJSONFileWith(path, r.config.AchValidateOpts)
 			if err != nil {
 				return fmt.Errorf("reading %s (as JSON) failed: %w", path, err)
 			}
-			out = append(out, file)
+
+			_, filename := filepath.Split(path)
+			out = append(out, File{
+				Filename: filename,
+				File:     achhelp.PopulateIDs(file),
+			})
 		}
 
 		return nil

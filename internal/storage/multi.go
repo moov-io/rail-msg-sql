@@ -3,8 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-
-	"github.com/moov-io/ach"
 )
 
 type MultiRepository struct {
@@ -27,8 +25,8 @@ func NewRepositories(config Config) (Repository, error) {
 	}, nil
 }
 
-func (r *MultiRepository) ListAchFiles(ctx context.Context, params FilterParams) ([]*ach.File, error) {
-	var out []*ach.File
+func (r *MultiRepository) ListAchFiles(ctx context.Context, params FilterParams) ([]File, error) {
+	var out []File
 
 	for idx := range r.repos {
 		files, err := r.repos[idx].ListAchFiles(ctx, params)

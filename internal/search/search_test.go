@@ -29,7 +29,21 @@ func TestSearch_ACH(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	svc, err := search.NewService(logger, fileStorage)
+	conf := search.Config{
+		SqliteFilepath: filepath.Join(t.TempDir(), "ach.db"),
+	}
+
+	svc, err := search.NewService(logger, conf, fileStorage)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		require.NoError(t, svc.Close())
+	})
+
+	ctx := context.Background()
+	var params storage.FilterParams
+
+	err = svc.IngestACHFiles(ctx, params)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -39,36 +53,36 @@ func TestSearch_ACH(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name:  "basic WHERE",
-			query: `SELECT trace_number, return_code FROM ach_files WHERE amount > 25;`,
+			name: "basic WHERE",
+			query: `
+SELECT ach_entries.trace_number, return_code
+FROM ach_entries
+INNER JOIN ach_addendas
+WHERE amount > 12500 AND return_code = 'R03'
+GROUP BY ach_entries.trace_number
+ORDER BY ach_entries.id ASC`,
 			expected: search.Results{
 				Headers: search.Row{
 					Columns: []interface{}{"trace_number", "return_code"},
 				},
 				Rows: []search.Row{
-					{Columns: []interface{}{"", "R14"}},
-					{Columns: []interface{}{nil, nil}},
-					{Columns: []interface{}{"273976361273620", "R02"}},
-					{Columns: []interface{}{"121042880000001", nil}},
-					{Columns: []interface{}{"231380100000001", nil}},
-					{Columns: []interface{}{"121042880000001", nil}},
-					{Columns: []interface{}{"121042880000001", nil}},
-					{Columns: []interface{}{"121042880000001", nil}},
-					{Columns: []interface{}{"088888880123459", nil}},
-					{Columns: []interface{}{"091000017611242", "R01"}},
-					{Columns: []interface{}{"081000030000000", nil}},
+					{Columns: []interface{}{"121042880000001", "R03"}},
+					{Columns: []interface{}{"088888880123459", "R03"}},
+					{Columns: []interface{}{"088888880123460", "R03"}},
+					{Columns: []interface{}{"081000030000004", "R03"}},
+					{Columns: []interface{}{"081000030000005", "R03"}},
 				},
 			},
 		},
 		{
 			name:  "basic SUM MIN MAX",
-			query: `select sum(amount), min(amount), max(amount) from ach_files where amount > 12.34;`,
+			query: `select sum(amount), min(amount), max(amount) from ach_entries where amount > 12.34;`,
 			expected: search.Results{
 				Headers: search.Row{
-					Columns: []interface{}{"SUM(amount)", "MIN(amount)", "MAX(amount)"},
+					Columns: []interface{}{"sum(amount)", "min(amount)", "max(amount)"},
 				},
 				Rows: []search.Row{
-					{Columns: []interface{}{12.34, 0.01, 0.01}},
+					{Columns: []interface{}{int64(300358904), int64(19), int64(100000000)}},
 				},
 			},
 		},
@@ -101,7 +115,7 @@ func TestSearch_ACH(t *testing.T) {
 					expected := tc.expected.Rows[idx].Columns[c]
 					got := results.Rows[idx].Columns[c]
 
-					msg := fmt.Sprintf("results[%d], column[%d] - %#v  vs  %#v", idx, c, expected, got)
+					msg := fmt.Sprintf("results[%d], column[%d] - %q  vs  %q", idx, c, expected, got)
 					require.Equal(t, expected, got, msg)
 				}
 			}
