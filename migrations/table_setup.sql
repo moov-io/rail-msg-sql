@@ -1,5 +1,5 @@
 CREATE TABLE ach_files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id TEXT PRIMARY KEY NOT NULL,
     filename TEXT NOT NULL,
     immediate_destination TEXT,
     immediate_origin TEXT,
@@ -18,10 +18,10 @@ CREATE TABLE ach_files (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX ach_files_uniq_idx ON ach_files(id, filename);
+CREATE UNIQUE INDEX ach_files_uniq_idx ON ach_files(file_id, filename);
 
 CREATE TABLE ach_batches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id TEXT NOT NULL,
     file_id INTEGER NOT NULL,
     service_class_code INTEGER,
     company_name TEXT,
@@ -42,14 +42,15 @@ CREATE TABLE ach_batches (
     company_identification_control TEXT,
     odfi_identification_control TEXT,
     batch_number_control INTEGER,
-    FOREIGN KEY (file_id) REFERENCES ach_files(id) ON DELETE CASCADE
+    FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_batches_uniq_idx ON ach_batches(id, file_id);
+CREATE UNIQUE INDEX ach_batches_uniq_idx ON ach_batches(batch_id, file_id);
 
 CREATE TABLE ach_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id TEXT NOT NULL,
     batch_id INTEGER NOT NULL,
+    file_id TEXT NOT NULL,
     transaction_code INTEGER,
     rdfi_identification TEXT,
     check_digit TEXT,
@@ -60,14 +61,15 @@ CREATE TABLE ach_entries (
     discretionary_data TEXT,
     addenda_record_indicator INTEGER,
     trace_number TEXT,
-    FOREIGN KEY (batch_id) REFERENCES ach_batches(id) ON DELETE CASCADE
+    FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_entries_uniq_idx ON ach_entries(id, batch_id);
+CREATE UNIQUE INDEX ach_entries_uniq_idx ON ach_entries(entry_id, batch_id, file_id);
 
 CREATE TABLE ach_addendas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    entry_id INTEGER NOT NULL,
+    entry_id INTEGER UNIQUE NOT NULL,
+    batch_id INTEGER NOT NULL,
+    file_id TEXT NOT NULL,
     type_code TEXT NOT NULL,
     terminal_identification_code TEXT,
     terminal_location TEXT,
@@ -107,7 +109,7 @@ CREATE TABLE ach_addendas (
     line_number INTEGER,
     addenda_sequence_number INTEGER,
     entry_detail_sequence_number TEXT,
-    FOREIGN KEY (entry_id) REFERENCES ach_entries(id) ON DELETE CASCADE
+    FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_addendas_uniq_idx ON ach_addendas(id, entry_id);
+CREATE UNIQUE INDEX ach_addendas_uniq_idx ON ach_addendas(entry_id, batch_id, file_id);

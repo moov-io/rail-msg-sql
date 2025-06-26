@@ -74,17 +74,16 @@ FROM ach_entries
 INNER JOIN ach_addendas
 WHERE amount > 12500 AND return_code = 'R03'
 GROUP BY ach_entries.trace_number
-ORDER BY ach_entries.id ASC`,
+ORDER BY ach_entries.entry_id ASC`,
 			expected: search.Results{
 				Headers: search.Row{
 					Columns: []interface{}{"trace_number", "return_code"},
 				},
 				Rows: []search.Row{
+					{Columns: []interface{}{"081000030000005", "R03"}},
 					{Columns: []interface{}{"121042880000001", "R03"}},
-					{Columns: []interface{}{"088888880123459", "R03"}},
 					{Columns: []interface{}{"088888880123460", "R03"}},
 					{Columns: []interface{}{"081000030000004", "R03"}},
-					{Columns: []interface{}{"081000030000005", "R03"}},
 				},
 			},
 		},
@@ -96,7 +95,7 @@ ORDER BY ach_entries.id ASC`,
 					Columns: []interface{}{"sum(amount)", "min(amount)", "max(amount)"},
 				},
 				Rows: []search.Row{
-					{Columns: []interface{}{int64(300358904), int64(19), int64(100000000)}},
+					{Columns: []interface{}{int64(300258904), int64(19), int64(100000000)}},
 				},
 			},
 		},
@@ -129,7 +128,7 @@ ORDER BY ach_entries.id ASC`,
 					expected := tc.expected.Rows[idx].Columns[c]
 					got := results.Rows[idx].Columns[c]
 
-					msg := fmt.Sprintf("results[%d], column[%d] - %q  vs  %q", idx, c, expected, got)
+					msg := fmt.Sprintf("results[%d], column[%d] - %#v  vs  %#v", idx, c, expected, got)
 					require.Equal(t, expected, got, msg)
 				}
 			}
