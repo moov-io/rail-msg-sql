@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Rail Message SQL Viewer</title>
+    <link rel="stylesheet" href="{{ .BaseURL }}static/style.css">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  </head>
+  <body>
+    <header>
+      <h1>Rail Message SQL Viewer</h1>
+    </header>
+
+    <main class="list">
+      <p>
+        Searching Files from {{ yyyymmdd .TimeRangeMin }} to {{ yyyymmdd .TimeRangeMax }}.
+      </p>
+
+      <nav class="pagination">
+        <a href="{{ startDateParam .TimeRangeMin }}"><- Older</a>
+        <a href="{{ endDateParam .TimeRangeMax }}">Newer -></a>
+      </nav>
+
+      <form id="search-form">
+        <textarea id="query" rows="12" cols="100" placeholder="Enter search query..."></textarea>
+        <br />
+        <input type="submit" value="Search..." />
+      </form>
+
+      <p id="error"></p>
+
+      <table id="results"></table>
+    </main>
+
+    <script src="{{ .BaseURL }}static/index.js"></script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-CREATE TABLE ach_files (
+CREATE TABLE IF NOT EXISTS ach_files (
     file_id TEXT PRIMARY KEY NOT NULL,
     filename TEXT NOT NULL,
     immediate_destination TEXT,
@@ -18,9 +18,9 @@ CREATE TABLE ach_files (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX ach_files_uniq_idx ON ach_files(file_id, filename);
+CREATE UNIQUE INDEX IF NOT EXISTS ach_files_uniq_idx ON ach_files(file_id, filename);
 
-CREATE TABLE ach_batches (
+CREATE TABLE IF NOT EXISTS ach_batches (
     batch_id TEXT NOT NULL,
     file_id INTEGER NOT NULL,
     service_class_code INTEGER,
@@ -45,9 +45,9 @@ CREATE TABLE ach_batches (
     FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_batches_uniq_idx ON ach_batches(batch_id, file_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ach_batches_uniq_idx ON ach_batches(batch_id, file_id);
 
-CREATE TABLE ach_entries (
+CREATE TABLE IF NOT EXISTS ach_entries (
     entry_id TEXT NOT NULL,
     batch_id INTEGER NOT NULL,
     file_id TEXT NOT NULL,
@@ -64,9 +64,9 @@ CREATE TABLE ach_entries (
     FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_entries_uniq_idx ON ach_entries(entry_id, batch_id, file_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ach_entries_uniq_idx ON ach_entries(entry_id, batch_id, file_id);
 
-CREATE TABLE ach_addendas (
+CREATE TABLE IF NOT EXISTS ach_addendas (
     entry_id INTEGER UNIQUE NOT NULL,
     batch_id INTEGER NOT NULL,
     file_id TEXT NOT NULL,
@@ -112,4 +112,4 @@ CREATE TABLE ach_addendas (
     FOREIGN KEY (file_id) REFERENCES ach_files(file_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX ach_addendas_uniq_idx ON ach_addendas(entry_id, batch_id, file_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ach_addendas_uniq_idx ON ach_addendas(entry_id, batch_id, file_id);

@@ -1,0 +1,47 @@
+RailMsgSQL:
+  Servers:
+    Public:
+      Bind:
+        Address: ":8686"
+      BasePath: "/ach"
+
+  Search:
+    SqliteFilepath: "ach.db"
+
+  Storage:
+    ACH:
+      - id: "mergable"
+        filesystem:
+          paths:
+            - "./internal/search/testdata/"
+
+# select * from ach_files inner join ach_entries where amount > 1000 limit 2;
+#
+# select
+#   transaction_code, amount, individual_name, ach_entries.trace_number, return_code
+# from ach_files
+# inner join ach_entries
+# inner join ach_addendas
+# where
+#   amount > 1000 limit 2;
+
+      # - id: "achgateway"
+      #   ACHGateway:
+      #     endpoint: "http://localhost:9494"
+      #     shards:
+      #       - "testing"
+
+      # - id: "audittrail"
+      #   bucket:
+      #     url: "gs://ach-audittrail/"
+      #     paths:
+      #       - "files"
+      #   encryption:
+      #     gpg:
+      #       files:
+      #         - keyFile: "/conf/keys/audittrail.priv"
+      #           # keyPassword: ""
+
+    ACHValidateOpts:
+      AllowMissingFileHeader: true
+      AllowMissingFileControl: true

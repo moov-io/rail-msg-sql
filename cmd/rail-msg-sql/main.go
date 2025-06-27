@@ -40,7 +40,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	searchController := search.NewController(env.Logger, searchService)
+	searchController := search.NewController(env.Logger, searchService, env.Config.Servers.Public.BasePath)
 	searchController.AppendRoutes(env.PublicRouter)
 
 	stopServers := env.RunServers(termListener)

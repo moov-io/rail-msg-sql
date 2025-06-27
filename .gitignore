@@ -44,3 +44,5 @@ cover.out
 /bin/
 .DS_Store
 /vendor/
+
+*.db
