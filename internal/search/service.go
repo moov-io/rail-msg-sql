@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/moov-io/ach"
+	"github.com/moov-io/ach/cmd/achcli/describe/mask"
 	"github.com/moov-io/base/log"
 	railmsgsql "github.com/moov-io/rail-msg-sql"
 	"github.com/moov-io/rail-msg-sql/internal/achhelp"
@@ -43,6 +44,7 @@ func NewService(logger log.Logger, config Config, fileStorage *storage.Repositor
 
 	return &service{
 		logger:      logger,
+		config:      config,
 		fileStorage: fileStorage,
 		db:          db,
 	}, nil
@@ -53,7 +55,9 @@ func openSqliteDB(config Config) (*sql.DB, error) {
 }
 
 type service struct {
-	logger      log.Logger
+	logger log.Logger
+	config Config
+
 	fileStorage *storage.Repository
 
 	db *sql.DB
@@ -410,6 +414,9 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 
 	// Make sure to normalize the IDs
 	file = achhelp.PopulateIDs(file)
+
+	// Mask the file before storage
+	file = mask.File(file, s.config.AchMasking)
 
 	// Begin transaction
 	tx, err := s.db.BeginTx(ctx, nil)

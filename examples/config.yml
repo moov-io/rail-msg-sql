@@ -7,6 +7,9 @@ RailMsgSQL:
 
   Search:
     SqliteFilepath: "ach.db"
+    AchMasking:
+      MaskNames: true
+      MaskAccountNumbers: true
 
   Storage:
     ACH:
