@@ -7,7 +7,7 @@ require (
 	github.com/moov-io/ach v1.51.1-0.20250627200822-df781f663cf9
 	github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91
 	github.com/moov-io/base v0.56.0
-	github.com/ncruces/go-sqlite3 v0.26.2
+	github.com/ncruces/go-sqlite3 v0.26.3
 	github.com/stretchr/testify v1.10.0
 )
 
