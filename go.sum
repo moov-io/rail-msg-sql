@@ -229,6 +229,8 @@ github.com/moov-io/ach v1.51.1-0.20250627200125-def87fc661c8 h1:CeZfWGoKggI7lqJk
 github.com/moov-io/ach v1.51.1-0.20250627200125-def87fc661c8/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
 github.com/moov-io/ach v1.51.1-0.20250627200822-df781f663cf9 h1:V3gs1zcu4FgrlETUd605sgvXaXsZCXTrJOk5EVDpkZk=
 github.com/moov-io/ach v1.51.1-0.20250627200822-df781f663cf9/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
+github.com/moov-io/ach v1.51.1-0.20250701165809-49315d6e4b05 h1:40Z1ZhKVZygCBZFlz86DmVe7cOabQsxtPu3+KFz3aUY=
+github.com/moov-io/ach v1.51.1-0.20250701165809-49315d6e4b05/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91 h1:TOZ1ePqy/zkRS70p6hGIq3lT4gHfdZ60gYz/8atxaK4=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91/go.mod h1:CqVrIWTMEaYwdjqHMy3QlTWq+QxkTfpzp/I2LqRIKRY=
 github.com/moov-io/base v0.56.0 h1:zNeviN7lW3hP0lsVeKwLYb8dTxcFvVTPX5xwrelCl8s=
