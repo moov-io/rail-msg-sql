@@ -14,6 +14,52 @@ WHERE created_at >= datetime('now', '-7 days')
 ORDER BY created_at DESC
 LIMIT 5;
 `},
+      { name: "Largest Amounts in Files", query: `
+WITH RankedEntries AS (
+    SELECT e.entry_id, e.file_id,
+           e.individual_name, e.dfi_account_number, e.amount,
+           e.transaction_code, e.trace_number, f.filename, f.file_creation_date,
+           (
+               SELECT COUNT(*) + 1
+               FROM ach_entries e2
+               WHERE e2.file_id = e.file_id
+               AND e2.amount > e.amount
+           ) AS rank_num
+    FROM ach_entries e
+    JOIN ach_files f ON e.file_id = f.file_id
+    WHERE f.created_at >= datetime('now', '-7 days')
+)
+SELECT
+  -- entry_id, file_id,
+  individual_name, dfi_account_number, amount, transaction_code,
+  trace_number, filename, file_creation_date
+FROM RankedEntries
+WHERE rank_num <= 3
+ORDER BY file_id, amount DESC
+LIMIT 10;
+`},
+    ],
+  },
+  {
+    category: "Batches",
+    queries: [
+      { name: "Originator Activity Summary", query: `
+SELECT
+  b.company_name, b.company_identification, COUNT(DISTINCT b.batch_id) AS batch_count,
+  SUM(e.amount) AS total_amount, COUNT(e.entry_id) AS entry_count, f.filename
+
+FROM ach_batches b
+JOIN ach_entries e ON b.batch_id = e.batch_id AND b.file_id = e.file_id
+JOIN ach_files f ON b.file_id = f.file_id
+
+WHERE
+  -- b.company_identification = :company_id AND
+  f.created_at >= datetime('now', '-30 days')
+
+GROUP BY b.company_name, b.company_identification, f.filename
+ORDER BY total_amount DESC
+LIMIT 10;
+`},
     ],
   },
   {
@@ -37,12 +83,47 @@ WHERE
 ORDER BY f.created_at DESC
 LIMIT 10;
 ` },
+      { name: "Possible Duplicate Entries", query: `
+SELECT
+  e.dfi_account_number, e.amount, e.individual_name, e.trace_number, COUNT(*) AS entry_count,
+  -- GROUP_CONCAT(e.entry_id) AS entry_ids,
+  f.filename
+
+FROM ach_entries e
+JOIN ach_files f ON e.file_id = f.file_id
+
+WHERE
+  f.created_at >= datetime('now', '-30 days')
+
+GROUP BY e.dfi_account_number, e.amount, e.trace_number
+HAVING entry_count > 1
+ORDER BY f.created_at DESC
+LIMIT 10;
+
+`},
     ],
   },
   {
     category: "Exceptions",
     queries: [
-      { name: "Recent Returns and Corrections", query: `
+      { name: "Recent Corrections", query: `
+SELECT
+  -- e.entry_id,
+  e.individual_name, e.dfi_account_number, e.amount,
+  e.trace_number, a.change_code,
+  -- a.payment_related_information,
+  f.filename, f.file_creation_date
+
+FROM ach_entries e
+JOIN ach_addendas a ON e.entry_id = a.entry_id AND e.file_id = a.file_id
+JOIN ach_files f ON e.file_id = f.file_id
+
+WHERE a.change_code IS NOT NULL
+
+ORDER BY f.created_at DESC
+LIMIT 10;
+`},
+      { name: "Recent Returns", query: `
 SELECT
   -- e.entry_id,
   e.individual_name, e.dfi_account_number, e.amount,
@@ -54,7 +135,7 @@ FROM ach_entries e
 JOIN ach_addendas a ON e.entry_id = a.entry_id AND e.file_id = a.file_id
 JOIN ach_files f ON e.file_id = f.file_id
 
-WHERE a.return_code IS NOT NULL OR a.change_code IS NOT NULL
+WHERE a.return_code IS NOT NULL
 
 ORDER BY f.created_at DESC
 LIMIT 10;
@@ -141,9 +222,9 @@ function populateAccordion() {
       const option = document.createElement("button");
       option.classList.add("query-option");
       option.textContent = query.name;
-      option.setAttribute("data-query", query.query);
+      option.setAttribute("data-query", query.query.trim());
       option.addEventListener("click", () => {
-        document.querySelector("#query").value = query.query;
+        document.querySelector("#query").value = query.query.trim();
       });
       content.appendChild(option);
     });
