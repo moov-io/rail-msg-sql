@@ -34,7 +34,7 @@ func NewEnvironment(env *Environment) (*Environment, error) {
 	if env.Config == nil {
 		cfg, err := LoadConfig(env.Logger)
 		if err != nil {
-			return nil, err
+			return env, err
 		}
 
 		env.Config = cfg
