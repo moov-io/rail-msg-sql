@@ -89,7 +89,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		c.errorResponse(w, fmt.Errorf("problem decoding query body: %v", err))
 		return
 	}
-	fmt.Printf("\n\n%s\n", string(query))
 
 	options, err := filelist.ReadListOptions(r)
 	if err != nil {
