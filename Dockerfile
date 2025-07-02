@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y ca-certificates curl \
 
 COPY --from=builder /src/bin/rail-msg-sql /app/
 
-ENV HTTP_PORT=8585
-ENV HEALTH_PORT=9595
+ENV HTTP_PORT=8686
+ENV HEALTH_PORT=9696
 
 EXPOSE ${HTTP_PORT}/tcp
 EXPOSE ${HEALTH_PORT}/tcp
