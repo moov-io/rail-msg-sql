@@ -6,3 +6,5 @@ RailMsgSQL:
     Admin:
       Bind:
         Address: ":9696"
+  Telemetry:
+    ServiceName: "rail-msg-sql"
