@@ -1,9 +1,9 @@
 package search
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/moov-io/ach-web-viewer/pkg/filelist"
@@ -70,15 +70,26 @@ func (c *controller) index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type searchRequest struct {
+	Query string `json:"query"`
+}
+
 func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 	ctx, span := telemetry.StartSpan(r.Context(), "api-search")
 	defer span.End()
 
-	query, err := io.ReadAll(r.Body)
+	var req searchRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		c.errorResponse(w, fmt.Errorf("problem reading search body: %v", err))
+		c.errorResponse(w, fmt.Errorf("reading search request: %v", err))
 		return
 	}
+	query, err := base64.StdEncoding.DecodeString(req.Query)
+	if err != nil {
+		c.errorResponse(w, fmt.Errorf("problem decoding query body: %v", err))
+		return
+	}
+	fmt.Printf("\n\n%s\n", string(query))
 
 	options, err := filelist.ReadListOptions(r)
 	if err != nil {

@@ -291,6 +291,10 @@ window.onload = function () {
   });
 };
 
+function encodeSQLToBase64(sql) {
+    return btoa(sql);
+}
+
 function performSearch(body) {
   const currentParams = new URLSearchParams(window.location.search);
   const queryParams = new URLSearchParams();
@@ -314,7 +318,9 @@ function performSearch(body) {
     headers: {
       "Content-Type": "text/plain",
     },
-    body: body,
+    body: JSON.stringify({
+      query: encodeSQLToBase64(body),
+    }),
   })
     .then((response) => response.json())
     .then((data) => {
