@@ -3,8 +3,13 @@
 package service
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/moov-io/base/log"
 	"github.com/moov-io/base/stime"
+	"github.com/moov-io/base/telemetry"
+	railmsgsql "github.com/moov-io/rail-msg-sql"
 
 	"github.com/gorilla/mux"
 )
@@ -42,6 +47,16 @@ func NewEnvironment(env *Environment) (*Environment, error) {
 
 	if env.TimeService == nil {
 		env.TimeService = stime.NewSystemTimeService()
+	}
+
+	telemetryShutdownFunc, err := telemetry.SetupTelemetry(context.Background(), env.Config.Telemetry, railmsgsql.Version)
+	if err != nil {
+		return env, fmt.Errorf("setting up telemetry failed: %w", err)
+	}
+	prev := env.Shutdown
+	env.Shutdown = func() {
+		prev()
+		telemetryShutdownFunc()
 	}
 
 	// router

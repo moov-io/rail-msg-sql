@@ -3,6 +3,7 @@
 package service
 
 import (
+	"github.com/moov-io/base/telemetry"
 	"github.com/moov-io/rail-msg-sql/internal/search"
 	"github.com/moov-io/rail-msg-sql/internal/storage"
 )
@@ -13,6 +14,8 @@ type GlobalConfig struct {
 
 // Config defines all the configuration for the app
 type Config struct {
+	Telemetry telemetry.Config
+
 	Servers ServerConfig
 
 	Search  search.Config
