@@ -9,12 +9,15 @@ import (
 	"github.com/moov-io/ach"
 	"github.com/moov-io/ach/cmd/achcli/describe/mask"
 	"github.com/moov-io/base/log"
+	"github.com/moov-io/base/telemetry"
 	railmsgsql "github.com/moov-io/rail-msg-sql"
 	"github.com/moov-io/rail-msg-sql/internal/achhelp"
 	"github.com/moov-io/rail-msg-sql/internal/storage"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Service interface {
@@ -71,19 +74,24 @@ func (s *service) Close() error {
 }
 
 func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParams) error {
+	ctx, span := telemetry.StartSpan(ctx, "ingest-ach-files")
+	defer span.End()
+
 	files, err := s.fileStorage.ListAchFiles(ctx, params)
 	if err != nil {
 		return fmt.Errorf("ingesting ach files: %w", err)
 	}
 
 	for idx := range files {
-		if files[idx].File == nil {
+		file := files[idx]
+
+		if file.File == nil {
 			continue
 		}
 
-		err := s.IngestACHFile(ctx, files[idx].Filename, files[idx].File)
+		err := s.IngestACHFile(ctx, file.Filename, file.File)
 		if err != nil {
-			return fmt.Errorf("ingesting %s failed: %w", files[idx].Filename, err)
+			return fmt.Errorf("ingesting %s failed: %w", file.Filename, err)
 		}
 	}
 
@@ -92,6 +100,11 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 
 // insertFile inserts an ACH file's header and control into ach_files.
 func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, file *ach.File) error {
+	ctx, span := telemetry.StartSpan(ctx, "sql-insert-file", trace.WithAttributes(
+		attribute.String("filename", filename),
+	))
+	defer span.End()
+
 	query := `
         INSERT OR IGNORE INTO ach_files (
             file_id,
@@ -412,6 +425,11 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 		return errors.New("nil File")
 	}
 
+	ctx, span := telemetry.StartSpan(ctx, "ingest-ach-file", trace.WithAttributes(
+		attribute.String("filename", filename),
+	))
+	defer span.End()
+
 	// Make sure to normalize the IDs
 	file = achhelp.PopulateIDs(file)
 
@@ -492,6 +510,11 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
+
+	ctx, span := telemetry.StartSpan(ctx, "search-files", trace.WithAttributes(
+		attribute.String("sql.query", query),
+	))
+	defer span.End()
 
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
