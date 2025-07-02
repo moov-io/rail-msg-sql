@@ -153,18 +153,24 @@ function yyyymmdd(date) {
   return `${year}-${month}-${day}`;
 }
 
+function calculateStartEndDate() {
+  const params = new URLSearchParams(window.location.search);
+  let startDate = params.get("startDate") ? new Date(params.get("startDate")) : null;
+  let endDate = params.get("endDate") ? new Date(params.get("endDate")) : null;
+
+  // Default to a 7-day range ending today if dates are invalid or missing
+  if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate)) {
+    endDate = new Date(); // Today
+    startDate = new Date();
+    startDate.setDate(endDate.getDate() - 7); // 7 days before today
+  }
+
+  return { startDate, endDate };
+}
+
 // Function to calculate new date ranges for pagination
 function calculateDateRangeUrls() {
-  const params = new URLSearchParams(window.location.search);
-  let startDate = params.get("startDate") ? new Date(params.get("startDate")) : new Date();
-  let endDate = params.get("endDate") ? new Date(params.get("endDate")) : new Date();
-
-  // Default to a 7-day range if dates are invalid
-  if (isNaN(startDate) || isNaN(endDate)) {
-    endDate = new Date();
-    startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7);
-  }
+  const { startDate, endDate } = calculateStartEndDate();
 
   // Calculate "Older" range (shift back 7 days)
   const olderStart = new Date(startDate);
@@ -187,11 +193,9 @@ function calculateDateRangeUrls() {
 
 // Function to update date range text and pagination URLs
 function updateDateRangeAndLinks() {
-  const params = new URLSearchParams(window.location.search);
-  const startDate = params.get("startDate") ? new Date(params.get("startDate")) : new Date();
-  const endDate = params.get("endDate") ? new Date(params.get("endDate")) : new Date();
-  const dateRangeElement = document.querySelector("#date-range");
+  const { startDate, endDate } = calculateStartEndDate();
 
+  const dateRangeElement = document.querySelector("#date-range");
   dateRangeElement.textContent = `Searching Files from ${yyyymmdd(startDate)} to ${yyyymmdd(endDate)}`;
 
   // Update pagination link URLs
