@@ -233,6 +233,8 @@ github.com/moov-io/ach v1.51.1-0.20250627200822-df781f663cf9 h1:V3gs1zcu4FgrlETU
 github.com/moov-io/ach v1.51.1-0.20250627200822-df781f663cf9/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
 github.com/moov-io/ach v1.51.1-0.20250701165809-49315d6e4b05 h1:40Z1ZhKVZygCBZFlz86DmVe7cOabQsxtPu3+KFz3aUY=
 github.com/moov-io/ach v1.51.1-0.20250701165809-49315d6e4b05/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
+github.com/moov-io/ach v1.52.0 h1:hyMCNvbk5JvFifWFYuzJXPo9/K6ooHPE0m7/MHilIeE=
+github.com/moov-io/ach v1.52.0/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91 h1:TOZ1ePqy/zkRS70p6hGIq3lT4gHfdZ60gYz/8atxaK4=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250626211433-b71716051d91/go.mod h1:CqVrIWTMEaYwdjqHMy3QlTWq+QxkTfpzp/I2LqRIKRY=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250629012944-98bc60967c39 h1:2MFqNQOlUeBUE28XS5An1CZesMPnIAMARxalMjqasNI=
