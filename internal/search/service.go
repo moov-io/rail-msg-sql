@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/moov-io/ach"
 	"github.com/moov-io/ach/cmd/achcli/describe/mask"
@@ -82,24 +83,45 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 
 	fmt.Printf("service.IngestACHFiles: %#v\n", params)
 
-	files, err := s.fileStorage.ListAchFiles(ctx, params)
+	listings, err := s.fileStorage.ListAchFiles(ctx, params)
 	if err != nil {
 		return fmt.Errorf("ingesting ach files: %w", err)
 	}
-	span.SetAttributes(attribute.Int("ingest.file_count", len(files)))
+	span.SetAttributes(attribute.Int("ingest.file_count", len(listings)))
 
-	for idx := range files {
-		file := files[idx]
+	var wg sync.WaitGroup
+	wg.Add(len(listings))
 
-		if file.File == nil {
-			continue
-		}
+	for idx := range listings {
+		// Grab each file to ingest
+		go func(listing storage.FileListing) {
+			defer wg.Done()
 
-		err := s.IngestACHFile(ctx, file.Filename, file.File)
-		if err != nil {
-			return fmt.Errorf("ingesting %s failed: %w", file.Filename, err)
-		}
+			logger := s.logger.With(log.Fields{
+				"source_id":    log.String(listing.SourceID),
+				"storage_path": log.String(listing.StoragePath),
+				"filename":     log.String(listing.Name),
+			})
+
+			// Grab the file and store it
+			file, err := s.fileStorage.GetAchFile(ctx, listing)
+			if err != nil {
+				logger.Error().LogErrorf("getting ach file: %v", err)
+				return
+			}
+			if file == nil || file.Contents == nil {
+				return // skip files we can't read
+			}
+
+			// Store the file
+			err = s.IngestACHFile(ctx, file.Filename, file.Contents)
+			if err != nil {
+				logger.Error().LogErrorf("ingesting file: %v", err)
+				return
+			}
+		}(listings[idx])
 	}
+	wg.Wait()
 
 	return nil
 }
