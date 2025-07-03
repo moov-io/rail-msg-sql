@@ -20,6 +20,7 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
@@ -65,10 +66,14 @@ type service struct {
 
 	fileStorage *storage.Repository
 
+	mu sync.Mutex
 	db *sql.DB
 }
 
 func (s *service) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s != nil && s.db != nil {
 		return s.db.Close()
 	}
@@ -89,14 +94,10 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	}
 	span.SetAttributes(attribute.Int("ingest.file_count", len(listings)))
 
-	var wg sync.WaitGroup
-	wg.Add(len(listings))
-
-	for idx := range listings {
+	var eg errgroup.Group
+	for _, listing := range listings {
 		// Grab each file to ingest
-		go func(listing storage.FileListing) {
-			defer wg.Done()
-
+		eg.Go(func() error {
 			logger := s.logger.With(log.Fields{
 				"source_id":    log.String(listing.SourceID),
 				"storage_path": log.String(listing.StoragePath),
@@ -106,24 +107,22 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 			// Grab the file and store it
 			file, err := s.fileStorage.GetAchFile(ctx, listing)
 			if err != nil {
-				logger.Error().LogErrorf("getting ach file: %v", err)
-				return
+				return logger.Error().LogErrorf("getting ach file: %v", err).Err()
 			}
 			if file == nil || file.Contents == nil {
-				return // skip files we can't read
+				return nil // skip files we can't read
 			}
 
 			// Store the file
 			err = s.IngestACHFile(ctx, file.Filename, file.Contents)
 			if err != nil {
-				logger.Error().LogErrorf("ingesting file: %v", err)
-				return
+				return logger.Error().LogErrorf("ingesting file: %v", err).Err()
 			}
-		}(listings[idx])
-	}
-	wg.Wait()
 
-	return nil
+			return nil
+		})
+	}
+	return eg.Wait()
 }
 
 func (s *service) fileExists(ctx context.Context, tx *sql.Tx, filename string) (bool, error) {
@@ -134,6 +133,9 @@ func (s *service) fileExists(ctx context.Context, tx *sql.Tx, filename string) (
 		&fileID,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
 		return false, fmt.Errorf("querying file exists: %w", err)
 	}
 
@@ -463,6 +465,9 @@ func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID, batchI
 
 // IngestACHFile ingests an ACH file into the SQLite database.
 func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.File) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if file == nil {
 		return errors.New("nil File")
 	}
@@ -487,6 +492,7 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 
 	// Skip inserting if the file exists already
 	exists, err := s.fileExists(ctx, tx, filename)
+	fmt.Printf("%q - exists=%v  error=%v\n", filename, exists, err)
 	if err != nil {
 		return fmt.Errorf("checking if %s exists: %v", filename, err)
 	}
@@ -558,6 +564,9 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 
 // Search executes a user-provided SQL query with parameters.
 func (s *service) Search(ctx context.Context, query string, params storage.FilterParams) (*Results, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
