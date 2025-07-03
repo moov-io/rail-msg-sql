@@ -243,6 +243,8 @@ github.com/moov-io/ach-web-viewer v0.12.7-0.20250702164150-6566ebe6bc67 h1:D7gV0
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250702164150-6566ebe6bc67/go.mod h1:wO7f56xLNg5toYYXj9cW24/F0dnAfWF/jE2G45IIYCk=
 github.com/moov-io/base v0.56.0 h1:zNeviN7lW3hP0lsVeKwLYb8dTxcFvVTPX5xwrelCl8s=
 github.com/moov-io/base v0.56.0/go.mod h1:Aiq0LQFbE1ha+bAOGxDtnu8ZEGzZorcIK/1jALBPk/E=
+github.com/moov-io/base v0.57.0 h1:GhhLX5N15homCejycjc+o/mr4NbTu8v6IDLDGQPoACs=
+github.com/moov-io/base v0.57.0/go.mod h1:Aiq0LQFbE1ha+bAOGxDtnu8ZEGzZorcIK/1jALBPk/E=
 github.com/moov-io/cryptfs v0.9.0 h1:/dm23FE5PI/Wpc/5tYuRuaT+KCTHI9ZuJHmX2AAGJJQ=
 github.com/moov-io/cryptfs v0.9.0/go.mod h1:h00k9DiNfYMK6cALuzfX6+pDVUXzbKu7umeEV1B3LII=
 github.com/moov-io/iso3166 v0.2.1 h1:kfj6tj6pupSuRB/q8sOSnMtHaAMqZoTx6RRB1Nw/Uzs=
