@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/moov-io/ach v1.52.0
-	github.com/moov-io/ach-web-viewer v0.12.7-0.20250703234153-c004127afb37
+	github.com/moov-io/ach-web-viewer v0.12.7-0.20250703191346-a0c620d29482
 	github.com/moov-io/base v0.57.0
 	github.com/ncruces/go-sqlite3 v0.26.3
 	github.com/stretchr/testify v1.10.0

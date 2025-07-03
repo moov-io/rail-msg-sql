@@ -37,14 +37,16 @@ func NewRepository(config Config) (*Repository, error) {
 }
 
 func (r *Repository) ListAchFiles(ctx context.Context, params FilterParams) ([]File, error) {
-	_, span := telemetry.StartSpan(ctx, "list-ach-files", trace.WithAttributes(
+	ctx, span := telemetry.StartSpan(ctx, "list-ach-files", trace.WithAttributes(
 		attribute.String("filter.start", params.StartDate.Format(time.RFC3339)),
 		attribute.String("filter.end", params.EndDate.Format(time.RFC3339)),
 		attribute.String("filter.pattern", params.Pattern),
 	))
 	defer span.End()
 
-	resp, err := r.ach.GetFiles(filelist.ListOpts{
+	fmt.Printf("storage.ListAchFiles: %#v\n", params)
+
+	resp, err := r.ach.GetFiles(ctx, filelist.ListOpts{
 		StartDate: params.StartDate,
 		EndDate:   params.EndDate,
 		Pattern:   params.Pattern,
@@ -59,7 +61,7 @@ func (r *Repository) ListAchFiles(ctx context.Context, params FilterParams) ([]F
 			// Grab the File
 			path := filepath.Join(fs.Files[idx].StoragePath, fs.Files[idx].Name)
 
-			file, err := r.ach.GetFile(fs.SourceID, path)
+			file, err := r.ach.GetFile(ctx, fs.SourceID, path)
 			if err != nil {
 				return nil, fmt.Errorf("opening %s failed: %w", path, err)
 			}

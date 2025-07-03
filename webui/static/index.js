@@ -298,13 +298,18 @@ function encodeSQLToBase64(sql) {
 function performSearch(body) {
   const currentParams = new URLSearchParams(window.location.search);
   const queryParams = new URLSearchParams();
-  const startDate = currentParams.get("startDate");
+
+  // Set query params
+  const { startDate, endDate } = calculateStartEndDate();
   if (startDate != null) {
-    queryParams.set("startDate", startDate);
+    queryParams.set("startDate", yyyymmdd(startDate));
   }
-  const endDate = currentParams.get("endDate");
   if (endDate != null) {
-    queryParams.set("endDate", endDate);
+    queryParams.set("endDate", yyyymmdd(endDate));
+  }
+  var patternElm = document.querySelector("#pattern");
+  if (patternElm) {
+    queryParams.set("pattern", patternElm.value);
   }
 
   // Clear error message before search

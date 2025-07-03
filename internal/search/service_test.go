@@ -106,7 +106,7 @@ ORDER BY ach_entries.entry_id ASC`,
 			ctx := context.Background()
 			var params storage.FilterParams
 
-			results, err := svc.Search(ctx, tc.query, params)
+			results, err := svc.Search(ctx, tc.query)
 			if tc.expectedError != nil {
 				require.ErrorContains(t, err, tc.expectedError.Error())
 			} else {

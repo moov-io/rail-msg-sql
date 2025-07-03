@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/moov-io/ach"
 	"github.com/moov-io/ach/cmd/achcli/describe/mask"
@@ -74,13 +75,18 @@ func (s *service) Close() error {
 }
 
 func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParams) error {
-	ctx, span := telemetry.StartSpan(ctx, "ingest-ach-files")
+	ctx, span := telemetry.StartSpan(ctx, "ingest-ach-files", trace.WithAttributes(
+		attribute.String("ingest.pattern", params.Pattern),
+	))
 	defer span.End()
+
+	fmt.Printf("service.IngestACHFiles: %#v\n", params)
 
 	files, err := s.fileStorage.ListAchFiles(ctx, params)
 	if err != nil {
 		return fmt.Errorf("ingesting ach files: %w", err)
 	}
+	span.SetAttributes(attribute.Int("ingest.file_count", len(files)))
 
 	for idx := range files {
 		file := files[idx]
@@ -510,6 +516,12 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
+
+	if params.Pattern != "" {
+		query = strings.ReplaceAll(query, "WHERE", "WHERE filename LIKE '%"+params.Pattern+"%' AND ")
+	}
+
+	fmt.Printf("\n\n%s\n", query)
 
 	ctx, span := telemetry.StartSpan(ctx, "search-files", trace.WithAttributes(
 		attribute.String("sql.query", query),
