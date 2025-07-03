@@ -74,16 +74,15 @@ FROM ach_entries
 INNER JOIN ach_addendas
 WHERE amount > 12500 AND return_code = 'R03'
 GROUP BY ach_entries.trace_number
-ORDER BY ach_entries.entry_id ASC`,
+ORDER BY ach_entries.trace_number ASC`,
 			expected: search.Results{
 				Headers: search.Row{
 					Columns: []interface{}{"trace_number", "return_code"},
 				},
 				Rows: []search.Row{
+					{Columns: []interface{}{"081000030000004", "R03"}},
 					{Columns: []interface{}{"081000030000005", "R03"}},
 					{Columns: []interface{}{"121042880000001", "R03"}},
-					{Columns: []interface{}{"088888880123460", "R03"}},
-					{Columns: []interface{}{"081000030000004", "R03"}},
 				},
 			},
 		},
@@ -95,7 +94,7 @@ ORDER BY ach_entries.entry_id ASC`,
 					Columns: []interface{}{"sum(amount)", "min(amount)", "max(amount)"},
 				},
 				Rows: []search.Row{
-					{Columns: []interface{}{int64(300258904), int64(19), int64(100000000)}},
+					{Columns: []interface{}{int64(300158904), int64(19), int64(100000000)}},
 				},
 			},
 		},
