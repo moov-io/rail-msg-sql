@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/moov-io/ach-web-viewer/pkg/filelist"
 	"github.com/moov-io/base/log"
 	"github.com/moov-io/base/telemetry"
 	"github.com/moov-io/rail-msg-sql/internal/storage"
 	"github.com/moov-io/rail-msg-sql/webui"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/gorilla/mux"
 )
@@ -101,6 +103,13 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		EndDate:   options.EndDate,
 		Pattern:   options.Pattern,
 	}
+	span.SetAttributes(
+		attribute.String("search.start_date", params.StartDate.Format(time.RFC3339)),
+		attribute.String("search.end_date", params.EndDate.Format(time.RFC3339)),
+		attribute.String("search.pattern", params.Pattern),
+	)
+
+	fmt.Printf("search: %#v\n", params)
 
 	err = c.service.IngestACHFiles(ctx, params)
 	if err != nil {
