@@ -126,6 +126,20 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	return nil
 }
 
+func (s *service) fileExists(ctx context.Context, tx *sql.Tx, filename string) (bool, error) {
+	qry := `SELECT file_id FROM ach_files WHERE filename = ? LIMIT 1;`
+
+	var fileID string
+	err := tx.QueryRowContext(ctx, qry, filename).Scan(
+		&fileID,
+	)
+	if err != nil {
+		return false, fmt.Errorf("querying file exists: %w", err)
+	}
+
+	return fileID != "", nil
+}
+
 // insertFile inserts an ACH file's header and control into ach_files.
 func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, file *ach.File) error {
 	ctx, span := telemetry.StartSpan(ctx, "sql-insert-file", trace.WithAttributes(
@@ -470,6 +484,15 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Skip inserting if the file exists already
+	exists, err := s.fileExists(ctx, tx, filename)
+	if err != nil {
+		return fmt.Errorf("checking if %s exists: %v", filename, err)
+	}
+	if exists {
+		return nil
+	}
 
 	// Insert file
 	err = s.insertFile(ctx, tx, filename, file)
