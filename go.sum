@@ -243,6 +243,8 @@ github.com/moov-io/ach-web-viewer v0.12.7-0.20250629012944-98bc60967c39 h1:2MFqN
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250629012944-98bc60967c39/go.mod h1:3z4a5OlRJ7YO0wZdpJ33V/TM0Yv9ytPjl3/a4FlS+Gg=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250702164150-6566ebe6bc67 h1:D7gV0py3gIlkaMxJozVlRMMxPnyLkr/0g3dcnbcYGw8=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250702164150-6566ebe6bc67/go.mod h1:wO7f56xLNg5toYYXj9cW24/F0dnAfWF/jE2G45IIYCk=
+github.com/moov-io/ach-web-viewer v0.12.7-0.20250703234153-c004127afb37 h1:iiG+LgmQCKgvN8odu9qYxeFjIbINS9LEZOrjmJWlLD8=
+github.com/moov-io/ach-web-viewer v0.12.7-0.20250703234153-c004127afb37/go.mod h1:Y3NR9N7wi7NLAYTC+F4gYFQu7PwAON4k01FLqaMbzC0=
 github.com/moov-io/base v0.56.0 h1:zNeviN7lW3hP0lsVeKwLYb8dTxcFvVTPX5xwrelCl8s=
 github.com/moov-io/base v0.56.0/go.mod h1:Aiq0LQFbE1ha+bAOGxDtnu8ZEGzZorcIK/1jALBPk/E=
 github.com/moov-io/base v0.57.0 h1:GhhLX5N15homCejycjc+o/mr4NbTu8v6IDLDGQPoACs=
