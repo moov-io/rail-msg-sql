@@ -146,23 +146,50 @@ LIMIT 10;
 
 // Function to format date as YYYY-MM-DD
 function yyyymmdd(date) {
-  if (!date || isNaN(date)) return "Unknown";
+  if (!date || isNaN(date.getTime())) return "Unknown";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
+// Function to validate and parse date from string
+function parseDate(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return null;
+
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return null;
+
+  const minDate = new Date("1970-01-01");
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() + 1);
+  if (date < minDate || date > maxDate) return null;
+
+  return date;
+}
+
+// Function to calculate start and end dates from query params
 function calculateStartEndDate() {
   const params = new URLSearchParams(window.location.search);
-  let startDate = params.get("startDate") ? new Date(params.get("startDate")) : null;
-  let endDate = params.get("endDate") ? new Date(params.get("endDate")) : null;
+  let startDate = parseDate(params.get("startDate"));
+  let endDate = parseDate(params.get("endDate"));
 
-  // Default to a 7-day range ending today if dates are invalid or missing
-  if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate)) {
-    endDate = new Date(); // Today
-    startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7); // 7 days before today
+  // Only fall back to default if both dates are null or invalid
+  if (!startDate || !endDate) {
+    endDate = new Date(); // Today, 10:10 AM CDT, July 07, 2025
+    endDate.setHours(23, 59, 59, 999);
+    startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+  } else if (endDate < startDate) {
+    console.warn("endDate is before startDate, using default range");
+    endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
   }
 
   return { startDate, endDate };
@@ -171,20 +198,18 @@ function calculateStartEndDate() {
 // Function to calculate new date ranges for pagination
 function calculateDateRangeUrls() {
   const { startDate, endDate } = calculateStartEndDate();
+  const rangeDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
-  // Calculate "Older" range (shift back 7 days)
   const olderStart = new Date(startDate);
-  olderStart.setDate(startDate.getDate() - 7);
+  olderStart.setDate(startDate.getDate() - rangeDays);
   const olderEnd = new Date(endDate);
-  olderEnd.setDate(endDate.getDate() - 7);
+  olderEnd.setDate(endDate.getDate() - rangeDays);
 
-  // Calculate "Newer" range (shift forward 7 days)
   const newerStart = new Date(startDate);
-  newerStart.setDate(startDate.getDate() + 7);
+  newerStart.setDate(startDate.getDate() + rangeDays);
   const newerEnd = new Date(endDate);
-  newerEnd.setDate(endDate.getDate() + 7);
+  newerEnd.setDate(endDate.getDate() + rangeDays);
 
-  // Generate URLs
   const olderUrl = `./?startDate=${yyyymmdd(olderStart)}&endDate=${yyyymmdd(olderEnd)}`;
   const newerUrl = `./?startDate=${yyyymmdd(newerStart)}&endDate=${yyyymmdd(newerEnd)}`;
 
@@ -193,20 +218,31 @@ function calculateDateRangeUrls() {
 
 // Function to update date range text and pagination URLs
 function updateDateRangeAndLinks() {
-  const { startDate, endDate } = calculateStartEndDate();
+  const params = new URLSearchParams(window.location.search);
+  const startDate = parseDate(params.get("startDate"));
+  const endDate = parseDate(params.get("endDate"));
 
   const dateRangeElement = document.querySelector("#date-range");
-  dateRangeElement.textContent = `Searching Files from ${yyyymmdd(startDate)} to ${yyyymmdd(endDate)}`;
+  if (dateRangeElement) {
+    const displayStartDate = new Date(startDate);
+    displayStartDate.setDate(displayStartDate.getDate() + 1);
+    const displayEndDate = new Date(endDate);
+    displayEndDate.setDate(displayEndDate.getDate() + 1);
+    dateRangeElement.textContent = `Searching Files from ${yyyymmdd(displayStartDate)} to ${yyyymmdd(displayEndDate)}`;
+  }
 
-  // Update pagination link URLs
+  // Update pagination link URLs based on original params or defaults
   const { olderUrl, newerUrl } = calculateDateRangeUrls();
-  document.querySelector("#older-link").setAttribute("data-url", olderUrl);
-  document.querySelector("#newer-link").setAttribute("data-url", newerUrl);
+  const olderLink = document.querySelector("#older-link");
+  const newerLink = document.querySelector("#newer-link");
+  if (olderLink) olderLink.setAttribute("data-url", olderUrl);
+  if (newerLink) newerLink.setAttribute("data-url", newerUrl);
 }
 
-// Function to populate the accordion
+// Function to populate the accordion (unchanged)
 function populateAccordion() {
   const accordionContainer = document.querySelector("#accordion-container");
+  if (!accordionContainer) return;
 
   predefinedQueries.forEach((category, index) => {
     const accordionItem = document.createElement("div");
@@ -228,7 +264,8 @@ function populateAccordion() {
       option.textContent = query.name;
       option.setAttribute("data-query", query.query.trim());
       option.addEventListener("click", () => {
-        document.querySelector("#query").value = query.query.trim();
+        const queryInput = document.querySelector("#query");
+        if (queryInput) queryInput.value = query.query.trim();
       });
       content.appendChild(option);
     });
@@ -253,66 +290,80 @@ function populateAccordion() {
 
 // Main initialization
 window.onload = function () {
-  // Populate the accordion
   populateAccordion();
-
-  // Update date range text and pagination URLs on load
   updateDateRangeAndLinks();
 
-  // Handle pagination link clicks
+  let isInitialLoad = true;
+
   const olderLink = document.querySelector("#older-link");
   const newerLink = document.querySelector("#newer-link");
 
-  olderLink.addEventListener("click", (event) => {
-    event.preventDefault();
-    const newUrl = olderLink.getAttribute("data-url");
-    window.history.pushState({ startDate: new URLSearchParams(newUrl).get("startDate"), endDate: new URLSearchParams(newUrl).get("endDate") }, "", newUrl);
-    updateDateRangeAndLinks();
-  });
+  if (olderLink) {
+    olderLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      const newUrl = olderLink.getAttribute("data-url");
+      window.history.pushState(
+        {
+          startDate: new URLSearchParams(newUrl).get("startDate"),
+          endDate: new URLSearchParams(newUrl).get("endDate"),
+        },
+        "",
+        newUrl
+      );
+      updateDateRangeAndLinks();
+    });
+  }
 
-  newerLink.addEventListener("click", (event) => {
-    event.preventDefault();
-    const newUrl = newerLink.getAttribute("data-url");
-    window.history.pushState({ startDate: new URLSearchParams(newUrl).get("startDate"), endDate: new URLSearchParams(newUrl).get("endDate") }, "", newUrl);
-    updateDateRangeAndLinks();
-  });
+  if (newerLink) {
+    newerLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      const newUrl = newerLink.getAttribute("data-url");
+      window.history.pushState(
+        {
+          startDate: new URLSearchParams(newUrl).get("startDate"),
+          endDate: new URLSearchParams(newUrl).get("endDate"),
+        },
+        "",
+        newUrl
+      );
+      updateDateRangeAndLinks();
+    });
+  }
 
-  // Handle browser back/forward navigation
   window.addEventListener("popstate", () => {
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      return;
+    }
     updateDateRangeAndLinks();
   });
 
-  // Handle search form submission
   const searchForm = document.querySelector("#search-form");
-  searchForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-    const query = document.querySelector("#query");
-    performSearch(query.value);
-  });
+  if (searchForm) {
+    searchForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const query = document.querySelector("#query");
+      if (query) {
+        performSearch(query.value);
+      }
+    });
+  }
 };
 
 function encodeSQLToBase64(sql) {
-    return btoa(sql);
+  return btoa(sql);
 }
 
 function performSearch(body) {
-  const currentParams = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(window.location.search);
   const queryParams = new URLSearchParams();
-
-  // Set query params
-  const { startDate, endDate } = calculateStartEndDate();
-  if (startDate != null) {
-    queryParams.set("startDate", yyyymmdd(startDate));
-  }
-  if (endDate != null) {
-    queryParams.set("endDate", yyyymmdd(endDate));
-  }
-  var patternElm = document.querySelector("#pattern");
+  queryParams.set("startDate", params.get("startDate") || yyyymmdd(new Date()));
+  queryParams.set("endDate", params.get("endDate") || yyyymmdd(new Date()));
+  const patternElm = document.querySelector("#pattern");
   if (patternElm) {
     queryParams.set("pattern", patternElm.value);
   }
 
-  // Clear error message before search
   const errorElm = document.querySelector("#error");
   if (errorElm) {
     errorElm.textContent = "";
@@ -332,9 +383,9 @@ function performSearch(body) {
       populateSearchResponse(data);
     })
     .catch((error) => {
-      const elm = document.querySelector("#error");
-      if (elm) {
-        elm.textContent = error.message;
+      const errorElm = document.querySelector("#error");
+      if (errorElm) {
+        errorElm.textContent = error.message;
       } else {
         console.error("Error element (#error) not found");
       }
@@ -344,35 +395,36 @@ function performSearch(body) {
 
 function populateSearchResponse(data) {
   const table = document.querySelector("#results");
-  table.innerHTML = ""; // Clear the previous rows
+  if (table) {
+    table.innerHTML = "";
 
-  // Add the Headers
-  const headers = document.createElement("tr");
-  if (data.Headers) {
-    data.Headers.Columns.forEach((col) => {
-      const th = document.createElement("th");
-      th.innerHTML = col;
-      headers.append(th);
-    });
-    table.append(headers);
-  }
-
-  // Add the rows
-  if (data.Rows) {
-    data.Rows.forEach((r) => {
-      const row = document.createElement("tr");
-      r.Columns.forEach((col) => {
-        const td = document.createElement("td");
-        td.innerHTML = col;
-        row.append(td);
+    const headers = document.createElement("tr");
+    if (data.Headers) {
+      data.Headers.Columns.forEach((col) => {
+        const th = document.createElement("th");
+        th.innerHTML = col;
+        headers.append(th);
       });
-      table.append(row);
-    });
-  }
+      table.append(headers);
+    }
 
-  // Show an error if one exists
-  if (data.error) {
-    const elm = document.querySelector("#error");
-    elm.textContent = data.error;
+    if (data.Rows) {
+      data.Rows.forEach((r) => {
+        const row = document.createElement("tr");
+        r.Columns.forEach((col) => {
+          const td = document.createElement("td");
+          td.innerHTML = col;
+          row.append(td);
+        });
+        table.append(row);
+      });
+    }
+
+    if (data.error) {
+      const errorElm = document.querySelector("#error");
+      if (errorElm) {
+        errorElm.textContent = data.error;
+      }
+    }
   }
 }
