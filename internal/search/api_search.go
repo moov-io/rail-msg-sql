@@ -109,8 +109,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		attribute.String("search.pattern", params.Pattern),
 	)
 
-	fmt.Printf("search: %#v\n", params)
-
 	err = c.service.IngestACHFiles(ctx, params)
 	if err != nil {
 		c.errorResponse(w, fmt.Errorf("problem ingesting files for search: %v", err))
