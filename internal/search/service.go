@@ -465,9 +465,6 @@ func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID, batchI
 
 // IngestACHFile ingests an ACH file into the SQLite database.
 func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.File) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if file == nil {
 		return errors.New("nil File")
 	}
@@ -476,6 +473,11 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 		attribute.String("filename", filename),
 	))
 	defer span.End()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	span.AddEvent("done waiting")
 
 	// Make sure to normalize the IDs
 	file = achhelp.PopulateIDs(file)
