@@ -44,8 +44,6 @@ func (r *Repository) ListAchFiles(ctx context.Context, params FilterParams) ([]F
 	))
 	defer span.End()
 
-	fmt.Printf("storage.ListAchFiles: %#v\n", params)
-
 	resp, err := r.ach.GetFiles(ctx, filelist.ListOpts{
 		StartDate: params.StartDate,
 		EndDate:   params.EndDate,

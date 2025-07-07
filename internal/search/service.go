@@ -86,8 +86,6 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	))
 	defer span.End()
 
-	fmt.Printf("service.IngestACHFiles: %#v\n", params)
-
 	listings, err := s.fileStorage.ListAchFiles(ctx, params)
 	if err != nil {
 		return fmt.Errorf("ingesting ach files: %w", err)
@@ -487,7 +485,6 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 
 	// Skip inserting if the file exists already
 	exists, err := s.fileExists(ctx, filename)
-	fmt.Printf("%q - exists=%v  error=%v\n", filename, exists, err)
 	if err != nil {
 		return fmt.Errorf("checking if %s exists: %v", filename, err)
 	}
@@ -569,8 +566,6 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 	if params.Pattern != "" {
 		query = strings.ReplaceAll(query, "WHERE", "WHERE filename LIKE '%"+params.Pattern+"%' AND ")
 	}
-
-	fmt.Printf("\n\n%s\n", query)
 
 	ctx, span := telemetry.StartSpan(ctx, "search-files", trace.WithAttributes(
 		attribute.String("sql.query", query),
