@@ -123,12 +123,21 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	return eg.Wait()
 }
 
-func (s *service) fileExists(ctx context.Context, filename string) (bool, error) {
-	qry := `SELECT file_id FROM ach_files WHERE filename = ? LIMIT 1;`
+func (s *service) fileExists(ctx context.Context, filename string, file *ach.File) (bool, error) {
+	qry := `SELECT filename FROM ach_files WHERE filename = ?`
+	var args []interface{}
+	args = append(args, filename)
 
-	var fileID string
-	err := s.db.QueryRowContext(ctx, qry, filename).Scan(
-		&fileID,
+	if file != nil && file.ID != "" {
+		qry += " OR file_id = ?"
+		args = append(args, file.ID)
+	}
+
+	qry += " LIMIT 1;"
+
+	var found string
+	err := s.db.QueryRowContext(ctx, qry, args...).Scan(
+		&found,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -137,7 +146,7 @@ func (s *service) fileExists(ctx context.Context, filename string) (bool, error)
 		return false, fmt.Errorf("querying file exists: %w", err)
 	}
 
-	return fileID != "", nil
+	return strings.EqualFold(filename, found), nil
 }
 
 // insertFile inserts an ACH file's header and control into ach_files.
@@ -148,7 +157,7 @@ func (s *service) insertFile(ctx context.Context, filename string, file *ach.Fil
 	defer span.End()
 
 	query := `
-        INSERT OR IGNORE INTO ach_files (
+        INSERT INTO ach_files (
             file_id,
             filename,
             immediate_destination,
@@ -167,6 +176,7 @@ func (s *service) insertFile(ctx context.Context, filename string, file *ach.Fil
             total_credit_entry_dollar_amount
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
+
 	_, err := s.db.ExecContext(ctx, query,
 		file.ID,
 		filename,
@@ -186,7 +196,7 @@ func (s *service) insertFile(ctx context.Context, filename string, file *ach.Fil
 		file.Control.TotalCreditEntryDollarAmountInFile,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to insert ach_file: %w", err)
+		return fmt.Errorf("failed to insert %s into ach_file: %w", filename, err)
 	}
 	return nil
 }
@@ -196,7 +206,7 @@ func (s *service) insertBatch(ctx context.Context, fileID string, batch ach.Batc
 	header := batch.GetHeader()
 	control := batch.GetControl()
 	query := `
-        INSERT OR IGNORE INTO ach_batches (
+        INSERT INTO ach_batches (
             batch_id,
             file_id,
             service_class_code,
@@ -252,7 +262,7 @@ func (s *service) insertBatch(ctx context.Context, fileID string, batch ach.Batc
 // insertEntry inserts an entry into ach_entries.
 func (s *service) insertEntry(ctx context.Context, batchID, fileID string, entry *ach.EntryDetail) error {
 	query := `
-        INSERT OR IGNORE INTO ach_entries (
+        INSERT INTO ach_entries (
             entry_id,
             batch_id,
             file_id,
@@ -292,7 +302,7 @@ func (s *service) insertEntry(ctx context.Context, batchID, fileID string, entry
 // insertAddenda inserts an addenda record into ach_addendas.
 func (s *service) insertAddenda(ctx context.Context, entryID, batchID, fileID string, addenda interface{}) error {
 	query := `
-        INSERT OR IGNORE INTO ach_addendas (
+        INSERT INTO ach_addendas (
             entry_id,
             batch_id,
             file_id,
@@ -477,17 +487,19 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 
 	span.AddEvent("done waiting")
 
-	// Make sure to normalize the IDs
-	file = achhelp.PopulateIDs(file)
-
 	// Mask the file before storage
 	file = mask.File(file, s.config.AchMasking)
 
+	// Make sure to normalize the IDs
+	file = achhelp.PopulateIDs(file)
+
 	// Skip inserting if the file exists already
-	exists, err := s.fileExists(ctx, filename)
+	exists, err := s.fileExists(ctx, filename, file)
+
 	if err != nil {
 		return fmt.Errorf("checking if %s exists: %v", filename, err)
 	}
+	span.AddEvent(fmt.Sprintf("%s exists - %v", filename, exists))
 	if exists {
 		return nil
 	}
