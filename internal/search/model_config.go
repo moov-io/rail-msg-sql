@@ -7,5 +7,7 @@ import (
 type Config struct {
 	SqliteFilepath string
 
+	BackgroundPrepare bool
+
 	AchMasking mask.Options
 }
