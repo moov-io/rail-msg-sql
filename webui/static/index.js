@@ -224,11 +224,8 @@ function updateDateRangeAndLinks() {
 
   const dateRangeElement = document.querySelector("#date-range");
   if (dateRangeElement) {
-    const displayStartDate = new Date(startDate);
-    displayStartDate.setDate(displayStartDate.getDate() + 1);
-    const displayEndDate = new Date(endDate);
-    displayEndDate.setDate(displayEndDate.getDate() + 1);
-    dateRangeElement.textContent = `Searching Files from ${yyyymmdd(displayStartDate)} to ${yyyymmdd(displayEndDate)}`;
+    const { startDate: calcStartDate, endDate: calcEndDate } = calculateStartEndDate();
+    dateRangeElement.textContent = `Searching Files from ${yyyymmdd(calcStartDate)} to ${yyyymmdd(calcEndDate)}`;
   }
 
   // Update pagination link URLs based on original params or defaults
