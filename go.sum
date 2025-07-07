@@ -225,10 +225,17 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/moov-io/ach v1.52.0 h1:hyMCNvbk5JvFifWFYuzJXPo9/K6ooHPE0m7/MHilIeE=
 github.com/moov-io/ach v1.52.0/go.mod h1:CkyghZB14RLCagR3HERvLGhQ6hrJZPYmUfpHGBBGHws=
+<<<<<<< HEAD
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250703191346-a0c620d29482 h1:po5Y6NgW9tLnb1YDbJYqUgICYlwOyWeEqpI1K7Dy42I=
 github.com/moov-io/ach-web-viewer v0.12.7-0.20250703191346-a0c620d29482/go.mod h1:TMPSw8AKER6f8jMwpToCy+sIn3YyLX+pJRlWBJyjZzg=
 github.com/moov-io/base v0.57.0 h1:GhhLX5N15homCejycjc+o/mr4NbTu8v6IDLDGQPoACs=
 github.com/moov-io/base v0.57.0/go.mod h1:Aiq0LQFbE1ha+bAOGxDtnu8ZEGzZorcIK/1jALBPk/E=
+=======
+github.com/moov-io/ach-web-viewer v0.12.7-0.20250707150553-fa626ba66341 h1:w++mE7cOS/q4ucIvqEVuB+g3KxlH+uES7DK/tSRgOH8=
+github.com/moov-io/ach-web-viewer v0.12.7-0.20250707150553-fa626ba66341/go.mod h1:TMPSw8AKER6f8jMwpToCy+sIn3YyLX+pJRlWBJyjZzg=
+github.com/moov-io/base v0.56.0 h1:zNeviN7lW3hP0lsVeKwLYb8dTxcFvVTPX5xwrelCl8s=
+github.com/moov-io/base v0.56.0/go.mod h1:Aiq0LQFbE1ha+bAOGxDtnu8ZEGzZorcIK/1jALBPk/E=
+>>>>>>> ac6d11f (build: update ach-web-viewer dep)
 github.com/moov-io/cryptfs v0.9.0 h1:/dm23FE5PI/Wpc/5tYuRuaT+KCTHI9ZuJHmX2AAGJJQ=
 github.com/moov-io/cryptfs v0.9.0/go.mod h1:h00k9DiNfYMK6cALuzfX6+pDVUXzbKu7umeEV1B3LII=
 github.com/moov-io/iso3166 v0.2.1 h1:kfj6tj6pupSuRB/q8sOSnMtHaAMqZoTx6RRB1Nw/Uzs=
