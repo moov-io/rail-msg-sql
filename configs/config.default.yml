@@ -8,3 +8,5 @@ RailMsgSQL:
         Address: ":9696"
   Telemetry:
     ServiceName: "rail-msg-sql"
+  Search:
+    BackgroundPrepare: true
