@@ -125,11 +125,11 @@ func (s *service) IngestACHFiles(ctx context.Context, params storage.FilterParam
 	return eg.Wait()
 }
 
-func (s *service) fileExists(ctx context.Context, tx *sql.Tx, filename string) (bool, error) {
+func (s *service) fileExists(ctx context.Context, filename string) (bool, error) {
 	qry := `SELECT file_id FROM ach_files WHERE filename = ? LIMIT 1;`
 
 	var fileID string
-	err := tx.QueryRowContext(ctx, qry, filename).Scan(
+	err := s.db.QueryRowContext(ctx, qry, filename).Scan(
 		&fileID,
 	)
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *service) fileExists(ctx context.Context, tx *sql.Tx, filename string) (
 }
 
 // insertFile inserts an ACH file's header and control into ach_files.
-func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, file *ach.File) error {
+func (s *service) insertFile(ctx context.Context, filename string, file *ach.File) error {
 	ctx, span := telemetry.StartSpan(ctx, "sql-insert-file", trace.WithAttributes(
 		attribute.String("filename", filename),
 	))
@@ -169,7 +169,7 @@ func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, f
             total_credit_entry_dollar_amount
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-	_, err := tx.ExecContext(ctx, query,
+	_, err := s.db.ExecContext(ctx, query,
 		file.ID,
 		filename,
 		file.Header.ImmediateDestination,
@@ -194,7 +194,7 @@ func (s *service) insertFile(ctx context.Context, tx *sql.Tx, filename string, f
 }
 
 // insertBatch inserts a batch's header and control into ach_batches.
-func (s *service) insertBatch(ctx context.Context, tx *sql.Tx, fileID string, batch ach.Batcher) error {
+func (s *service) insertBatch(ctx context.Context, fileID string, batch ach.Batcher) error {
 	header := batch.GetHeader()
 	control := batch.GetControl()
 	query := `
@@ -222,7 +222,7 @@ func (s *service) insertBatch(ctx context.Context, tx *sql.Tx, fileID string, ba
             batch_number_control
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-	_, err := tx.ExecContext(ctx, query,
+	_, err := s.db.ExecContext(ctx, query,
 		batch.ID(),
 		fileID,
 		header.ServiceClassCode,
@@ -252,7 +252,7 @@ func (s *service) insertBatch(ctx context.Context, tx *sql.Tx, fileID string, ba
 }
 
 // insertEntry inserts an entry into ach_entries.
-func (s *service) insertEntry(ctx context.Context, tx *sql.Tx, batchID, fileID string, entry *ach.EntryDetail) error {
+func (s *service) insertEntry(ctx context.Context, batchID, fileID string, entry *ach.EntryDetail) error {
 	query := `
         INSERT OR IGNORE INTO ach_entries (
             entry_id,
@@ -270,7 +270,7 @@ func (s *service) insertEntry(ctx context.Context, tx *sql.Tx, batchID, fileID s
             trace_number
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-	_, err := tx.ExecContext(ctx, query,
+	_, err := s.db.ExecContext(ctx, query,
 		entry.ID,
 		batchID,
 		fileID,
@@ -292,7 +292,7 @@ func (s *service) insertEntry(ctx context.Context, tx *sql.Tx, batchID, fileID s
 }
 
 // insertAddenda inserts an addenda record into ach_addendas.
-func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID, batchID, fileID string, addenda interface{}) error {
+func (s *service) insertAddenda(ctx context.Context, entryID, batchID, fileID string, addenda interface{}) error {
 	query := `
         INSERT OR IGNORE INTO ach_addendas (
             entry_id,
@@ -456,7 +456,7 @@ func (s *service) insertAddenda(ctx context.Context, tx *sql.Tx, entryID, batchI
 		entryDetailSequenceNumber,
 	)
 
-	_, err := tx.ExecContext(ctx, query, values...)
+	_, err := s.db.ExecContext(ctx, query, values...)
 	if err != nil {
 		return fmt.Errorf("failed to insert addenda (type %s): %w", typeCode, err)
 	}
@@ -485,15 +485,8 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 	// Mask the file before storage
 	file = mask.File(file, s.config.AchMasking)
 
-	// Begin transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
 	// Skip inserting if the file exists already
-	exists, err := s.fileExists(ctx, tx, filename)
+	exists, err := s.fileExists(ctx, filename)
 	fmt.Printf("%q - exists=%v  error=%v\n", filename, exists, err)
 	if err != nil {
 		return fmt.Errorf("checking if %s exists: %v", filename, err)
@@ -503,65 +496,65 @@ func (s *service) IngestACHFile(ctx context.Context, filename string, file *ach.
 	}
 
 	// Insert file
-	err = s.insertFile(ctx, tx, filename, file)
+	err = s.insertFile(ctx, filename, file)
 	if err != nil {
 		return err
 	}
 
 	// Insert batches
 	for _, batch := range file.Batches {
-		err := s.insertBatch(ctx, tx, file.ID, batch)
+		err := s.insertBatch(ctx, file.ID, batch)
 		if err != nil {
 			return err
 		}
 
 		// Insert entries
 		for _, entry := range batch.GetEntries() {
-			err := s.insertEntry(ctx, tx, batch.ID(), file.ID, entry)
+			err := s.insertEntry(ctx, batch.ID(), file.ID, entry)
 			if err != nil {
 				return err
 			}
 
 			// Insert addenda
 			if entry.Addenda02 != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda02); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda02); err != nil {
 					return err
 				}
 			}
 			for _, addenda05 := range entry.Addenda05 {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, addenda05); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, addenda05); err != nil {
 					return err
 				}
 			}
 			if entry.Addenda98 != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda98); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda98); err != nil {
 					return err
 				}
 			}
 			if entry.Addenda98Refused != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda98Refused); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda98Refused); err != nil {
 					return err
 				}
 			}
 			if entry.Addenda99 != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda99); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda99); err != nil {
 					return err
 				}
 			}
 			if entry.Addenda99Contested != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda99Contested); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda99Contested); err != nil {
 					return err
 				}
 			}
 			if entry.Addenda99Dishonored != nil {
-				if err := s.insertAddenda(ctx, tx, entry.ID, batch.ID(), file.ID, entry.Addenda99Dishonored); err != nil {
+				if err := s.insertAddenda(ctx, entry.ID, batch.ID(), file.ID, entry.Addenda99Dishonored); err != nil {
 					return err
 				}
 			}
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // Search executes a user-provided SQL query with parameters.
