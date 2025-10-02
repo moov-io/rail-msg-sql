@@ -291,6 +291,8 @@ github.com/ncruces/go-sqlite3 v0.28.0 h1:AQVTUPgfamONl09LS+4rGFbHmLKM8/QrJJJi1Uu
 github.com/ncruces/go-sqlite3 v0.28.0/go.mod h1:WqvLhYwtEiZzg1H8BIeahUv/DxbmR+3xG5jDHDiBAGk=
 github.com/ncruces/go-sqlite3 v0.29.0 h1:1tsLiagCoqZEfcHDeKsNSv5jvrY/Iu393pAnw2wLNJU=
 github.com/ncruces/go-sqlite3 v0.29.0/go.mod h1:r1hSvYKPNJ+OlUA1O3r8o9LAawzPAlqeZiIdxTBBBJ0=
+github.com/ncruces/go-sqlite3 v0.29.1 h1:NIi8AISWBToRHyoz01FXiTNvU147Tqdibgj2tFzJCqM=
+github.com/ncruces/go-sqlite3 v0.29.1/go.mod h1:PpccBNNhvjwUOwDQEn2gXQPFPTWdlromj0+fSkd5KSg=
 github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt7M=
 github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvza5fFc9G7g=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
@@ -452,6 +454,8 @@ golang.org/x/crypto v0.40.0 h1:r4x+VvoG5Fm+eJcxMaY8CQM7Lb0l1lsmjGBQ6s8BfKM=
 golang.org/x/crypto v0.40.0/go.mod h1:Qr1vMER5WyS2dfPHAlsOj01wgLbsyWtFn/aY+5+ZdxY=
 golang.org/x/crypto v0.41.0 h1:WKYxWedPGCTVVl5+WHSSrOBT0O8lx32+zxmHxijgXp4=
 golang.org/x/crypto v0.41.0/go.mod h1:pO5AFd7FA68rFak7rOAGVuygIISepHftHnr8dr6+sUc=
+golang.org/x/crypto v0.42.0 h1:chiH31gIWm57EkTXpwnqf8qeuMUi0yekh6mT2AvFlqI=
+golang.org/x/crypto v0.42.0/go.mod h1:4+rDnOTJhQCx2q7/j6rAN5XDw8kPjeaXEUR2eL94ix8=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b h1:M2rDM6z3Fhozi9O7NWsxAkg/yqS/lQJ6PmkyIV3YP+o=
 golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b/go.mod h1:3//PLf8L/X+8b4vuAfHzxeRUl04Adcb341+IGKfnqS8=
