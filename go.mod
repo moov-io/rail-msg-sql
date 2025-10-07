@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/moov-io/ach v1.53.0
 	github.com/moov-io/ach-web-viewer v0.12.8
-	github.com/moov-io/base v0.58.0
+	github.com/moov-io/base v0.59.0
 	github.com/ncruces/go-sqlite3 v0.29.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.38.0
