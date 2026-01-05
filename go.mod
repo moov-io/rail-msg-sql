@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/moov-io/ach v1.53.4
+	github.com/moov-io/ach v1.54.0
 	github.com/moov-io/ach-web-viewer v0.12.8
 	github.com/moov-io/base v0.60.0
 	github.com/ncruces/go-sqlite3 v0.30.4
@@ -108,7 +108,7 @@ require (
 	gocloud.dev v0.42.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
