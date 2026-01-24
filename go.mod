@@ -7,7 +7,7 @@ require (
 	github.com/moov-io/ach v1.55.1
 	github.com/moov-io/ach-web-viewer v0.12.8
 	github.com/moov-io/base v0.60.0
-	github.com/ncruces/go-sqlite3 v0.30.4
+	github.com/ncruces/go-sqlite3 v0.30.5
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
