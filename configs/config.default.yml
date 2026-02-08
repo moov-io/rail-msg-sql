@@ -9,4 +9,9 @@ RailMsgSQL:
   Telemetry:
     ServiceName: "rail-msg-sql"
   Search:
+    Sqlite:
+      Directory: "."
+      BusyTimeout: "10s"
+      MaxOpenConns: 10
+      MaxIdleConns: 5
     BackgroundPrepare: true
