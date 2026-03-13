@@ -1,17 +1,17 @@
 module github.com/moov-io/rail-msg-sql
 
-go 1.24.4
+go 1.25.0
 
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/moov-io/ach v1.56.3
 	github.com/moov-io/ach-web-viewer v0.12.8
 	github.com/moov-io/base v0.61.1
-	github.com/ncruces/go-sqlite3 v0.30.5
+	github.com/ncruces/go-sqlite3 v0.32.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/trace v1.40.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 )
 
 require (
