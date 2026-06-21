@@ -37,7 +37,9 @@ func TestSearch_ACH(t *testing.T) {
 	require.NoError(t, err)
 
 	conf := search.Config{
-		SqliteFilepath: filepath.Join(t.TempDir(), "ach.db"),
+		Sqlite: &search.SqliteConfig{
+			Directory: t.TempDir(),
+		},
 	}
 
 	svc, err := search.NewService(logger, conf, fileStorage)
