@@ -575,8 +575,15 @@ func (s *service) Search(ctx context.Context, query string, params storage.Filte
 		return nil, fmt.Errorf("query cannot be empty")
 	}
 
+	trimmed := strings.TrimSpace(query)
+	kind := strings.ToUpper(trimmed)
+	if !strings.HasPrefix(kind, "SELECT") && !strings.HasPrefix(kind, "WITH") {
+		return nil, fmt.Errorf("only SELECT queries are allowed")
+	}
+
 	if params.Pattern != "" {
-		query = strings.ReplaceAll(query, "WHERE", "WHERE filename LIKE '%"+params.Pattern+"%' AND ")
+		escaped := strings.ReplaceAll(params.Pattern, "'", "''")
+		query = strings.ReplaceAll(query, "WHERE", "WHERE filename LIKE '%"+escaped+"%' AND ")
 	}
 
 	ctx, span := telemetry.StartSpan(ctx, "search-files", trace.WithAttributes(
